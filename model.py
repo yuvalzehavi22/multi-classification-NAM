@@ -91,7 +91,7 @@ class FeatureNN(torch.nn.Module):
             x = self.dropout(x)
         return self.linear(x)
 
-
+print("hi")
 # Neural Additive Model (NAM) Class
 class NeuralAdditiveModel(torch.nn.Module):
     """

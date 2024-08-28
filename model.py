@@ -26,7 +26,7 @@ class ActivationLayer(torch.nn.Module):
         super().__init__()
         
         self.weight = torch.nn.Parameter(torch.empty((in_features, out_features)))
-        self.bias = torch.nn.Parameter(torch.empty(in_features))
+        self.bias = torch.nn.Parameter(torch.empty(in_features)) #before it was in_features - understand why!
 
     def forward(self, x):
         raise NotImplementedError("abstract method called")
@@ -45,6 +45,7 @@ class ExULayer(ActivationLayer):
         truncated_normal_(self.bias, std=0.5)
 
     def forward(self, x): 
+        # First, multiply the input by the exponential of the weights
         exu = (x - self.bias) @ torch.exp(self.weight)
         output = torch.clip(exu, 0, 1)
         
@@ -113,12 +114,12 @@ class FeatureNN(torch.nn.Module):
         
         # Different architectures
         if self.architecture_type == 'multi_output':
-            self.output_layer = nn.Linear(in_units, output_dim, bias=False)
-            torch.nn.init.xavier_uniform_(self.output_layers.weight)
+            self.output_layer = torch.nn.Linear(in_units, output_dim, bias=False)
+            torch.nn.init.xavier_uniform_(self.output_layer.weight)
             
         elif self.architecture_type == 'parallel_single_output' or self.architecture_type == 'single_to_multi_output':
-            self.output_layer = nn.Linear(in_units, 1, bias=False)
-            torch.nn.init.xavier_uniform_(self.output_layers.weight)
+            self.output_layer = torch.nn.Linear(in_units, 1, bias=False)
+            torch.nn.init.xavier_uniform_(self.output_layer.weight)
             
 
     def forward(self, x):
@@ -165,7 +166,7 @@ class FeatureNN_BlockType(torch.nn.Module):
                                          hidden_units=hidden_units,
                                          shallow_layer=shallow_layer,
                                          hidden_layer=hidden_layer,
-                                         dropout=hidden_dropout,
+                                         dropout=dropout,
                                          output_dim=output_dim,
                                          architecture_type=architecture_type)
             
@@ -175,7 +176,7 @@ class FeatureNN_BlockType(torch.nn.Module):
                               hidden_units=hidden_units,
                               shallow_layer=shallow_layer,
                               hidden_layer=hidden_layer,
-                              dropout=hidden_dropout,
+                              dropout=dropout,
                               output_dim=output_dim, 
                               architecture_type=architecture_type)
                     for i in range(output_dim)])
@@ -185,7 +186,7 @@ class FeatureNN_BlockType(torch.nn.Module):
                                          hidden_units=hidden_units,
                                          shallow_layer=shallow_layer,
                                          hidden_layer=hidden_layer,
-                                         dropout=hidden_dropout,
+                                         dropout=dropout,
                                          output_dim=output_dim,
                                          architecture_type=architecture_type
                                         )

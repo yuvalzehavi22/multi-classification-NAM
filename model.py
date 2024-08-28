@@ -2,7 +2,9 @@ import numpy as np
 from typing import Union, Iterable, Sized, Tuple
 import torch
 import torch.nn.functional as F
+import math
 
+from mononet import MonotonicLayer
 
 def truncated_normal_(tensor, mean: float = 0., std: float = 1.):
     """
@@ -78,7 +80,31 @@ class ReLULayer(ActivationLayer):
             print('ReLULayer Normalization L2:\n',torch.linalg.norm(self.weight.t(), 2, dim=0))
         
         return output
+    
 
+class MonotonicLayer(ActivationLayer):
+
+    def __init__(self, 
+                 in_features: int, 
+                 out_features: int):
+        super().__init__(in_features, out_features)
+
+        torch.nn.init.normal_(self.weight, mean=0)
+
+        self.fn = 'tanh_p1'
+        self.pos_fn = self.pos_tanh
+        
+    def pos_tanh(self, x):
+        return torch.tanh(x) + 1.
+
+    def forward(self, input: torch):
+        ret = torch.matmul(input, torch.transpose(self.pos_fn(self.weight), 0, 1))
+        return ret
+    
+
+#####################################################################################
+################################### MODEL CLASSES ###################################
+#####################################################################################
 
 # FeatureNN Class
 class FeatureNN(torch.nn.Module):
@@ -92,7 +118,7 @@ class FeatureNN(torch.nn.Module):
                  hidden_layer: ActivationLayer = ReLULayer,
                  dropout: float = .5,
                  output_dim: int = 1,
-                 architecture_type: str = 'multi_output',  # options: 'single_to_multi_output', 'parallel_single_output', 'multi_output'
+                 architecture_type: str = 'multi_output',  # options: 'single_to_multi_output', 'parallel_single_output', 'multi_output', 'monotonic_hidden_layer'
                  ):
         
         super().__init__()
@@ -138,6 +164,10 @@ class FeatureNN(torch.nn.Module):
         outputs = self.output_layer(x)
         
         return outputs
+    
+
+# FeatureNN Class - 
+
 
 
 # FeatureNN block type Class
@@ -193,7 +223,26 @@ class FeatureNN_BlockType(torch.nn.Module):
             
             self.output_layer = torch.nn.Linear(1, output_dim, bias=False)
             torch.nn.init.xavier_uniform_(self.output_layer.weight)
+
+        # elif self.architecture_type == 'monotonic_hidden_layer': #Enforce Monotonic Relationships
+        #     self.feature_nns = FeatureNN(shallow_units=shallow_units,
+        #                                  hidden_units=hidden_units,
+        #                                  shallow_layer=shallow_layer,
+        #                                  hidden_layer=hidden_layer,
+        #                                  dropout=dropout,
+        #                                  output_dim=output_dim,
+        #                                  architecture_type=architecture_type
+        #                                 )
             
+            # # Apply monotonic constraints directly after the FeatureNN
+            # self.monotonic = torch.nn.Sequential(
+            #     MonotonicLayer(hidden_units[-1], 32, fn='tanh_p1'),
+            #     torch.nn.LeakyReLU(),
+            #     MonotonicLayer(32, 16, fn='tanh_p1'),
+            #     torch.nn.LeakyReLU(),
+            #     MonotonicLayer(16, output_dim, fn='tanh_p1'),
+            # )
+
     def forward(self, x):
         
         if self.architecture_type == 'multi_output':
@@ -208,6 +257,10 @@ class FeatureNN_BlockType(torch.nn.Module):
             single_output = self.feature_nns(x)
             # Final output layer
             outputs = self.output_layer(single_output)
+
+        elif self.architecture_type == 'monotonic_hidden_layer':
+            hidden_output = self.feature_nns(x)
+            outputs = self.monotonic(hidden_output)
             
         return outputs
 

@@ -1,3 +1,4 @@
+import numpy as np
 from typing import Union, Iterable, Sized, Tuple
 import torch
 import torch.nn.functional as F
@@ -23,6 +24,7 @@ class ActivationLayer(torch.nn.Module):
                  in_features: int,
                  out_features: int):
         super().__init__()
+        
         self.weight = torch.nn.Parameter(torch.empty((in_features, out_features)))
         self.bias = torch.nn.Parameter(torch.empty(in_features))
 
@@ -38,12 +40,20 @@ class ExULayer(ActivationLayer):
                  in_features: int,
                  out_features: int):
         super().__init__(in_features, out_features)
+        
         truncated_normal_(self.weight, mean=4.0, std=0.5)
         truncated_normal_(self.bias, std=0.5)
 
-    def forward(self, x):
+    def forward(self, x): 
         exu = (x - self.bias) @ torch.exp(self.weight)
-        return torch.clip(exu, 0, 1)
+        output = torch.clip(exu, 0, 1)
+        
+        if 0:
+            print('ExULayer_weights:', self.weight.detach().cpu().numpy())
+            print('ExULayer Normalization L1\n:', torch.linalg.norm(self.weight.t(), 1, dim=0))
+            print('ExULayer Normalization L2\n:',torch.linalg.norm(self.weight.t(), 2, dim=0))
+        
+        return output
 
 
 class ReLULayer(ActivationLayer):
@@ -54,17 +64,25 @@ class ReLULayer(ActivationLayer):
                  in_features: int,
                  out_features: int):
         super().__init__(in_features, out_features)
+        
         torch.nn.init.xavier_uniform_(self.weight)
         truncated_normal_(self.bias, std=0.5)
 
     def forward(self, x):
-        return F.relu((x - self.bias) @ self.weight)
+        output = F.relu((x - self.bias) @ self.weight)
+        
+        if 0:
+            print('ReLULayer_weights:', self.weight.detach().cpu().numpy())
+            print('ReLULayer Normalization L1:\n', torch.linalg.norm(self.weight.t(), 1, dim=0))
+            print('ReLULayer Normalization L2:\n',torch.linalg.norm(self.weight.t(), 2, dim=0))
+        
+        return output
 
 
 # FeatureNN Class
 class FeatureNN(torch.nn.Module):
     """
-    Neural network for individual features
+    Neural network for individual features with configurable architecture.
     """
     def __init__(self,
                  shallow_units: int,
@@ -72,26 +90,127 @@ class FeatureNN(torch.nn.Module):
                  shallow_layer: ActivationLayer = ExULayer,
                  hidden_layer: ActivationLayer = ReLULayer,
                  dropout: float = .5,
+                 output_dim: int = 1,
+                 architecture_type: str = 'multi_output',  # options: 'single_to_multi_output', 'parallel_single_output', 'multi_output'
                  ):
+        
         super().__init__()
-        self.layers = torch.nn.ModuleList([
-            hidden_layer(shallow_units if i == 0 else hidden_units[i - 1], hidden_units[i])
-            for i in range(len(hidden_units))
-        ])
-        self.layers.insert(0, shallow_layer(1, shallow_units))
-
-        self.dropout = torch.nn.Dropout(p=dropout)
-        self.linear = torch.nn.Linear(shallow_units if len(hidden_units) == 0 else hidden_units[-1], 1, bias=False)
-        torch.nn.init.xavier_uniform_(self.linear.weight)
+        
+        self.architecture_type = architecture_type
+        
+        # First (shallow) layer
+        self.shallow_layer = shallow_layer(1, shallow_units)
+        
+        # Hidden layers
+        self.hidden_layers = torch.nn.ModuleList()
+        in_units = shallow_units
+        for out_units in hidden_units:
+            self.hidden_layers.append(hidden_layer(in_units, out_units))
+            in_units = out_units  # Update in_units to the output of the last layer
+        
+        # Dropout layer
+        self.dropout = torch.nn.Dropout(p=dropout) 
+        
+        # Different architectures
+        if self.architecture_type == 'multi_output':
+            self.output_layer = nn.Linear(in_units, output_dim, bias=False)
+            torch.nn.init.xavier_uniform_(self.output_layers.weight)
+            
+        elif self.architecture_type == 'parallel_single_output' or self.architecture_type == 'single_to_multi_output':
+            self.output_layer = nn.Linear(in_units, 1, bias=False)
+            torch.nn.init.xavier_uniform_(self.output_layers.weight)
+            
 
     def forward(self, x):
         x = x.unsqueeze(1)
-        for layer in self.layers:
+        
+        # Pass through the shallow layer
+        x = self.shallow_layer(x)
+        #x = self.dropout(x)
+
+        # Pass through each hidden layer with dropout
+        for layer in self.hidden_layers:
             x = layer(x)
             x = self.dropout(x)
-        return self.linear(x)
 
-print("hi")
+        # Final output layer
+        outputs = self.output_layer(x)
+        
+        return outputs
+
+
+# FeatureNN block type Class
+class FeatureNN_BlockType(torch.nn.Module):
+    """
+    Neural network for individual features with configurable architecture.
+    """
+    def __init__(self,
+                 shallow_units: int,
+                 hidden_units: Tuple = (),
+                 shallow_layer: ActivationLayer = ExULayer,
+                 hidden_layer: ActivationLayer = ReLULayer,
+                 dropout: float = .5,
+                 output_dim: int = 1,
+                 architecture_type: str = 'multi_output',  # options: 'single_to_multi_output', 'parallel_single_output', 'multi_output'
+                 ):
+        
+        super().__init__()
+        
+        self.architecture_type = architecture_type
+        self.num_classes = output_dim
+       
+        # Different architectures
+        if self.architecture_type == 'multi_output':
+            self.feature_nns = FeatureNN(shallow_units=shallow_units,
+                                         hidden_units=hidden_units,
+                                         shallow_layer=shallow_layer,
+                                         hidden_layer=hidden_layer,
+                                         dropout=hidden_dropout,
+                                         output_dim=output_dim,
+                                         architecture_type=architecture_type)
+            
+        elif self.architecture_type == 'parallel_single_output': 
+            self.feature_nns = torch.nn.ModuleList([
+                    FeatureNN(shallow_units=shallow_units,
+                              hidden_units=hidden_units,
+                              shallow_layer=shallow_layer,
+                              hidden_layer=hidden_layer,
+                              dropout=hidden_dropout,
+                              output_dim=output_dim, 
+                              architecture_type=architecture_type)
+                    for i in range(output_dim)])
+            
+        elif self.architecture_type == 'single_to_multi_output':  
+            self.feature_nns = FeatureNN(shallow_units=shallow_units,
+                                         hidden_units=hidden_units,
+                                         shallow_layer=shallow_layer,
+                                         hidden_layer=hidden_layer,
+                                         dropout=hidden_dropout,
+                                         output_dim=output_dim,
+                                         architecture_type=architecture_type
+                                        )
+            
+            self.output_layer = torch.nn.Linear(1, output_dim, bias=False)
+            torch.nn.init.xavier_uniform_(self.output_layer.weight)
+            
+    def forward(self, x):
+        
+        if self.architecture_type == 'multi_output':
+            outputs = self.feature_nns(x)
+
+        elif self.architecture_type == 'parallel_single_output':
+            # Process each output separately using the corresponding branch
+            single_output = [branch(x) for branch in self.feature_nns]
+            outputs = torch.cat(single_output, dim=-1)
+            
+        elif self.architecture_type == 'single_to_multi_output':
+            single_output = self.feature_nns(x)
+            # Final output layer
+            outputs = self.output_layer(single_output)
+            
+        return outputs
+
+
 # Neural Additive Model (NAM) Class
 class NeuralAdditiveModel(torch.nn.Module):
     """
@@ -103,10 +222,13 @@ class NeuralAdditiveModel(torch.nn.Module):
                  hidden_units: Tuple = (),
                  shallow_layer: ActivationLayer = ExULayer,
                  hidden_layer: ActivationLayer = ReLULayer,
-                 feature_dropout: float = 0.,
                  hidden_dropout: float = 0.,
+                 feature_dropout: float = 0.,
+                 output_dim: int = 1,
+                 architecture_type: str = 'multi_output',  # options: 'single_to_multi_output', 'parallel_single_output', 'multi_output'
                  ):
         super().__init__()
+        
         self.input_size = input_size
 
         if isinstance(shallow_units, list):
@@ -115,21 +237,96 @@ class NeuralAdditiveModel(torch.nn.Module):
             shallow_units = [shallow_units for _ in range(input_size)]
 
         self.feature_nns = torch.nn.ModuleList([
-            FeatureNN(shallow_units=shallow_units[i],
-                      hidden_units=hidden_units,
-                      shallow_layer=shallow_layer,
-                      hidden_layer=hidden_layer,
-                      dropout=hidden_dropout)
-            for i in range(input_size)
-        ])
+            FeatureNN_BlockType(shallow_units=shallow_units[i],
+                                hidden_units=hidden_units,
+                                shallow_layer=shallow_layer,
+                                hidden_layer=hidden_layer,
+                                dropout=hidden_dropout,
+                                output_dim=output_dim,
+                                architecture_type=architecture_type) 
+            for i in range(input_size)])
+        
         self.feature_dropout = torch.nn.Dropout(p=feature_dropout)
-        self.bias = torch.nn.Parameter(torch.zeros(1))
-
+        self.bias = torch.nn.Parameter(torch.zeros(output_dim))
+        
     def forward(self, x):
-        f_out = torch.cat(self._feature_nns(x), dim=-1)
+        # Collect outputs from each feature network
+        FeatureNN_out = self._feature_nns(x)
+        
+        # Concatenates a sequence of tensors along the latent features dimension 
+        f_out = torch.stack(FeatureNN_out, dim=-1)
+        
+        # Sum across features and add bias
         f_out = self.feature_dropout(f_out)
-
-        return f_out.sum(axis=-1) + self.bias, f_out
+        outputs = f_out.sum(axis=-1) + self.bias
+        
+        if 0:
+            print('final output', outputs)
+            print('f_out', f_out)
+        return outputs, f_out
 
     def _feature_nns(self, x):
         return [self.feature_nns[i](x[:, i]) for i in range(self.input_size)]
+    
+
+# Hirarchical Neural Additive Model Class
+class HierarchNeuralAdditiveModel(torch.nn.Module):
+    """
+    Hierarch Neural Additive Model
+    """
+    def __init__(self,
+                 input_size: int,
+                 shallow_units: int,
+                 hidden_units: Tuple = (),
+                 shallow_layer: ActivationLayer = ExULayer,
+                 hidden_layer: ActivationLayer = ReLULayer,
+                 hidden_dropout: float = 0.,
+                 feature_dropout: float = 0.,
+                 latent_feature_dropout: float = 0.,
+                 latent_var_dim: int = 1,
+                 output_dim: int = 1,
+                 featureNN_architecture_phase1: str = 'multi_output',
+                 featureNN_architecture_phase2: str = 'multi_output',
+                 ):
+        super().__init__()
+
+        self.NAM_features = NeuralAdditiveModel(input_size=input_size,
+                                shallow_units= shallow_units,
+                                hidden_units= hidden_units,
+                                shallow_layer= shallow_layer,
+                                hidden_layer= hidden_layer,
+                                hidden_dropout= hidden_dropout,
+                                feature_dropout= feature_dropout,
+                                output_dim= latent_var_dim,
+                                architecture_type= featureNN_architecture_phase1,                
+                                )
+       
+
+        self.NAM_output = NeuralAdditiveModel(input_size=latent_var_dim,
+                                shallow_units= shallow_units,
+                                hidden_units= hidden_units,
+                                shallow_layer= shallow_layer,
+                                hidden_layer= hidden_layer,
+                                hidden_dropout= hidden_dropout,
+                                feature_dropout= latent_feature_dropout,
+                                output_dim = output_dim,
+                                architecture_type= featureNN_architecture_phase2,
+                                )
+
+    def forward(self, x):
+        
+        latent_outputs, f_out = self.NAM_features(x)
+
+        outputs, lat_f_out = self.NAM_output(latent_outputs)
+       
+         # Apply softmax to get class probabilities
+#         outputs = torch.softmax(outputs, dim=-1)
+
+        if 0:
+            print('x:', x.shape)
+            print('latent_outputs:',latent_outputs.shape)
+            print('f_out:',f_out.shape)
+            print('outputs:',outputs.shape)
+            print('lat_f_out:',lat_f_out.shape)  
+            
+        return outputs, lat_f_out

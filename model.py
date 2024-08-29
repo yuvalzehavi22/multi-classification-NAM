@@ -111,58 +111,68 @@ class MonotonicLayer(ActivationLayer):
 #####################################################################################
 
 # FeatureNN Class
-class FeatureNN(torch.nn.Module):
+class FeatureNN_Base(torch.nn.Module):
     """
-    Neural network for individual features with configurable architecture.
+    Neural Network model for each individual feature.
     """
     def __init__(self,
-                 shallow_units: int,
-                 hidden_units: Tuple = (),
-                 shallow_layer: ActivationLayer = ExULayer,
-                 hidden_layer: ActivationLayer = ReLULayer,
+                 num_units: int= 64,
+                 hidden_units: list = [64, 32],
                  dropout: float = .5,
-                 output_dim: int = 1,
-                 architecture_type: str = 'multi_output',  # options: 'single_to_multi_output', 'parallel_single_output', 'multi_output', 'monotonic_hidden_layer'
+                 shallow: bool = True,
+                 first_layer: ActivationLayer = ExULayer,
+                 hidden_layer: ActivationLayer = ReLULayer,          
+                 num_classes: int = 1,
                  ):
-        
+          
+        """Initializes FeatureNN hyperparameters.
+
+        Args:
+          num_units: Number of hidden units in the first hidden layer.
+          hidden_units: Number of hidden units in the next hidden layers - the number of additional layers is the size of the list.
+          dropout: Coefficient for dropout regularization.
+          shallow: If True, then a shallow network with a single hidden layer is created (size: (1,num_units)),
+                   otherwise, a network with more hidden layers is created (the number of hidden layers - hidden_units+1).
+          first_layer: Activation and type of hidden unit (ExUs/ReLU) used in the first hidden layer.
+          hidden_layer: Activation and type of hidden unit used in the next hidden layers (ReLULayer/MonotonicLayer),          
+          num_classes: The output dimension of the feature block (adjusted to fit to muli-classification task)
+        """
         super().__init__()
         
-        self.architecture_type = architecture_type
+        self.num_units = num_units
+        self.hidden_units = hidden_units
+        self.shallow = shallow
+        self.activation_first_layer = first_layer
+        self.activation_hidden_layer = hidden_layer
+        self.num_classes = num_classes
         
-        # First (shallow) layer
-        self.shallow_layer = shallow_layer(1, shallow_units)
+        # First layer
+        self.hidden_layers = torch.nn.ModuleList([
+            self.activation_first_layer(1, self.num_units)
+        ])
         
-        # Hidden layers
-        self.hidden_layers = torch.nn.ModuleList()
-        in_units = shallow_units
-        for out_units in hidden_units:
-            self.hidden_layers.append(hidden_layer(in_units, out_units))
-            in_units = out_units  # Update in_units to the output of the last layer
+        if not self.shallow:
+            # Add hidden layers
+            in_units = self.num_units
+            for out_units in hidden_units:
+                self.hidden_layers.append(self.activation_hidden_layer(in_units, out_units))
+                in_units = out_units  # Update in_units to the output of the last layer
         
         # Dropout layer
         self.dropout = torch.nn.Dropout(p=dropout) 
         
-        # Different architectures
-        if self.architecture_type == 'multi_output':
-            self.output_layer = torch.nn.Linear(in_units, output_dim, bias=False)
-            torch.nn.init.xavier_uniform_(self.output_layer.weight)
-            
-        elif self.architecture_type == 'parallel_single_output' or self.architecture_type == 'single_to_multi_output':
-            self.output_layer = torch.nn.Linear(in_units, 1, bias=False)
-            torch.nn.init.xavier_uniform_(self.output_layer.weight)
-            
+        # Last linear layer
+        self.output_layer = torch.nn.Linear(in_units, self.num_classes, bias=False)
+        torch.nn.init.xavier_uniform_(self.output_layer.weight)      
 
     def forward(self, x):
         x = x.unsqueeze(1)
-        
-        # Pass through the shallow layer
-        x = self.shallow_layer(x)
-        #x = self.dropout(x)
 
         # Pass through each hidden layer with dropout
         for layer in self.hidden_layers:
             x = layer(x)
-            x = self.dropout(x)
+            if self.dropout > 0.0:
+                x = self.dropout(x)
 
         # Final output layer
         outputs = self.output_layer(x)
@@ -170,62 +180,75 @@ class FeatureNN(torch.nn.Module):
         return outputs
     
 
-# FeatureNN Class - 
-
-
 
 # FeatureNN block type Class
-class FeatureNN_BlockType(torch.nn.Module):
+class FeatureNN(torch.nn.Module):
     """
     Neural network for individual features with configurable architecture.
     """
     def __init__(self,
-                 shallow_units: int,
-                 hidden_units: Tuple = (),
-                 shallow_layer: ActivationLayer = ExULayer,
-                 hidden_layer: ActivationLayer = ReLULayer,
+                 num_units: int= 64,
+                 hidden_units: list = [64, 32],
                  dropout: float = .5,
-                 output_dim: int = 1,
-                 architecture_type: str = 'multi_output',  # options: 'single_to_multi_output', 'parallel_single_output', 'multi_output'
+                 shallow: bool = True,
+                 first_layer: ActivationLayer = ExULayer,
+                 hidden_layer: ActivationLayer = ReLULayer,          
+                 num_classes: int = 1,
+                 architecture_type: str = 'multi_output',  # options: 'single_to_multi_output', 'parallel_single_output', 'multi_output', 'monotonic_hidden_layer'
                  ):
         
         super().__init__()
+
+        """Initializes FeatureNN hyperparameters.
+
+        Args:
+          Same as FeatureNN_Base - num_units, hidden_units, dropout, shallow, first_layer, hidden_layer, num_classes
+          architecture_type: The architecture of FeatureNN ('single_to_multi_output', 'parallel_single_output', 'multi_output')
+        """
         
+        self.num_units = num_units
+        self.hidden_units = hidden_units
+        self.dropout_val = dropout
+        self.shallow = shallow
+        self.activation_first_layer = first_layer
+        self.activation_hidden_layer = hidden_layer
+        self.num_classes = num_classes
         self.architecture_type = architecture_type
-        self.num_classes = output_dim
        
         # Different architectures
         if self.architecture_type == 'multi_output':
-            self.feature_nns = FeatureNN(shallow_units=shallow_units,
-                                         hidden_units=hidden_units,
-                                         shallow_layer=shallow_layer,
-                                         hidden_layer=hidden_layer,
-                                         dropout=dropout,
-                                         output_dim=output_dim,
-                                         architecture_type=architecture_type)
+            self.feature_nns = FeatureNN_Base(num_units= self.num_units,
+                                        hidden_units = self.hidden_units,
+                                        dropout = self.dropout_val,
+                                        shallow = self.shallow,
+                                        first_layer = self.activation_first_layer,
+                                        hidden_layer = self.activation_hidden_layer,          
+                                        num_classes = self.num_classes,
+                                        architecture_type = self.architecture_type)
             
         elif self.architecture_type == 'parallel_single_output': 
             self.feature_nns = torch.nn.ModuleList([
-                    FeatureNN(shallow_units=shallow_units,
-                              hidden_units=hidden_units,
-                              shallow_layer=shallow_layer,
-                              hidden_layer=hidden_layer,
-                              dropout=dropout,
-                              output_dim=output_dim, 
-                              architecture_type=architecture_type)
-                    for i in range(output_dim)])
+                    FeatureNN_Base(num_units= self.num_units,
+                            hidden_units = self.hidden_units,
+                            dropout = self.dropout_val,
+                            shallow = self.shallow,
+                            first_layer = self.activation_first_layer,
+                            hidden_layer = self.activation_hidden_layer,          
+                            num_classes = 1,
+                            architecture_type = self.architecture_type)
+                    for i in range(self.num_classes)])
             
         elif self.architecture_type == 'single_to_multi_output':  
-            self.feature_nns = FeatureNN(shallow_units=shallow_units,
-                                         hidden_units=hidden_units,
-                                         shallow_layer=shallow_layer,
-                                         hidden_layer=hidden_layer,
-                                         dropout=dropout,
-                                         output_dim=output_dim,
-                                         architecture_type=architecture_type
-                                        )
+            self.feature_nns = FeatureNN_Base(num_units= self.num_units,
+                                        hidden_units = self.hidden_units,
+                                        dropout = self.dropout_val,
+                                        shallow = self.shallow,
+                                        first_layer = self.activation_first_layer,
+                                        hidden_layer = self.activation_hidden_layer,          
+                                        num_classes = 1,
+                                        architecture_type = self.architecture_type)
             
-            self.output_layer = torch.nn.Linear(1, output_dim, bias=False)
+            self.output_layer = torch.nn.Linear(1, self.num_classes, bias=False)
             torch.nn.init.xavier_uniform_(self.output_layer.weight)
 
         # elif self.architecture_type == 'monotonic_hidden_layer': #Enforce Monotonic Relationships
@@ -262,9 +285,9 @@ class FeatureNN_BlockType(torch.nn.Module):
             # Final output layer
             outputs = self.output_layer(single_output)
 
-        elif self.architecture_type == 'monotonic_hidden_layer':
-            hidden_output = self.feature_nns(x)
-            outputs = self.monotonic(hidden_output)
+        # elif self.architecture_type == 'monotonic_hidden_layer':
+        #     hidden_output = self.feature_nns(x)
+        #     outputs = self.monotonic(hidden_output)
             
         return outputs
 
@@ -275,37 +298,64 @@ class NeuralAdditiveModel(torch.nn.Module):
     Combines multiple feature networks, each processing one feature, with dropout and bias
     """
     def __init__(self,
-                 input_size: int,
-                 shallow_units: int,
-                 hidden_units: Tuple = (),
-                 shallow_layer: ActivationLayer = ExULayer,
-                 hidden_layer: ActivationLayer = ReLULayer,
+                 num_inputs: int,
+                 num_units: int= 64,
+                 hidden_units: list = [64, 32],
                  hidden_dropout: float = 0.,
                  feature_dropout: float = 0.,
-                 output_dim: int = 1,
-                 architecture_type: str = 'multi_output',  # options: 'single_to_multi_output', 'parallel_single_output', 'multi_output'
+                 shallow: bool = True,
+                 first_layer: ActivationLayer = ExULayer,
+                 hidden_layer: ActivationLayer = ReLULayer,          
+                 num_classes: int = 1,
+                 architecture_type: str = 'multi_output',  # options: 'single_to_multi_output', 'parallel_single_output', 'multi_output', 'monotonic_hidden_layer'
                  ):
         super().__init__()
-        
-        self.input_size = input_size
 
-        if isinstance(shallow_units, list):
-            assert len(shallow_units) == input_size
-        elif isinstance(shallow_units, int):
-            shallow_units = [shallow_units for _ in range(input_size)]
+        """Initializes NAM hyperparameters.
+
+        Args:
+          num_inputs: Number of feature inputs in input data.
+          num_units: Number of hidden units in the first hidden layer.
+          hidden_units: Number of hidden units in the next hidden layers - the number of additional layers is the size of the list.
+          hidden_dropout: Coefficient for dropout within each Feature NNs.
+          feature_dropout: Coefficient for dropping out entire Feature NNs.
+          shallow: If True, then a shallow network with a single hidden layer is created (size: (1,num_units)),
+                   otherwise, a network with more hidden layers is created (the number of hidden layers - hidden_units+1).
+          first_layer: Activation and type of hidden unit (ExUs/ReLU) used in the first hidden layer.
+          hidden_layer: Activation and type of hidden unit used in the next hidden layers (ReLULayer/MonotonicLayer),          
+          num_classes: The output dimension of the feature block (adjusted to fit to muli-classification task)
+          architecture_type: The architecture of FeatureNN ('single_to_multi_output', 'parallel_single_output', 'multi_output')
+        """
+        
+        self.input_size = num_inputs
+
+        if isinstance(num_units, list):
+            assert len(num_units) == num_inputs
+            self.num_units = num_units
+        elif isinstance(num_units, int):
+            self.num_units = [num_units for _ in range(self.input_size)]
+
+        self.hidden_units = hidden_units
+        self.hidden_dropout = hidden_dropout
+        self.shallow = shallow
+        self.activation_first_layer = first_layer
+        self.activation_hidden_layer = hidden_layer
+        self.num_classes = num_classes
+        self.architecture_type = architecture_type
 
         self.feature_nns = torch.nn.ModuleList([
-            FeatureNN_BlockType(shallow_units=shallow_units[i],
-                                hidden_units=hidden_units,
-                                shallow_layer=shallow_layer,
-                                hidden_layer=hidden_layer,
-                                dropout=hidden_dropout,
-                                output_dim=output_dim,
-                                architecture_type=architecture_type) 
-            for i in range(input_size)])
-        
+            FeatureNN(num_units=self.num_units[i],
+                      hidden_units = self.hidden_units,
+                      dropout = self.hidden_dropout,
+                      shallow = self.shallow,
+                      first_layer = self.activation_first_layer,
+                      hidden_layer = self.activation_hidden_layer,          
+                      num_classes = self.num_classes,
+                      architecture_type = self.architecture_type) 
+            for i in range(self.input_size)])
+  
         self.feature_dropout = torch.nn.Dropout(p=feature_dropout)
-        self.bias = torch.nn.Parameter(torch.zeros(output_dim))
+        self.bias = torch.nn.Parameter(torch.zeros(self.num_classes))
         
     def forward(self, x):
         # Collect outputs from each feature network
@@ -315,7 +365,9 @@ class NeuralAdditiveModel(torch.nn.Module):
         f_out = torch.stack(FeatureNN_out, dim=-1)
         
         # Sum across features and add bias
-        f_out = self.feature_dropout(f_out)
+        if self.feature_dropout > 0.0:
+            f_out = self.feature_dropout(f_out)
+
         outputs = f_out.sum(axis=-1) + self.bias
         
         if 0:
@@ -333,42 +385,99 @@ class HierarchNeuralAdditiveModel(torch.nn.Module):
     Hierarch Neural Additive Model
     """
     def __init__(self,
-                 input_size: int,
-                 shallow_units: int,
-                 hidden_units: Tuple = (),
-                 shallow_layer: ActivationLayer = ExULayer,
-                 hidden_layer: ActivationLayer = ReLULayer,
-                 hidden_dropout: float = 0.,
-                 feature_dropout: float = 0.,
-                 latent_feature_dropout: float = 0.,
+                 num_inputs: int,
+                 #phase1 - latent_features:
+                 num_units_phase1: int= 64,
+                 hidden_units_phase1: list = [64, 32],
+                 hidden_dropout_phase1: float = 0.,
+                 feature_dropout_phase1: float = 0.,
+                 shallow_phase1: bool = True,
+                 first_layer_phase1: ActivationLayer = ExULayer,
+                 hidden_layer_phase1: ActivationLayer = ReLULayer,          
                  latent_var_dim: int = 1,
+                 featureNN_architecture_phase1: str = 'multi_output',  # options: 'single_to_multi_output', 'parallel_single_output', 'multi_output', 'monotonic_hidden_layer'
+                 #phase2 - final outputs:
+                 num_units_phase2: int= 64,
+                 hidden_units_phase2: list = [64, 32],
+                 hidden_dropout_phase2: float = 0.,
+                 feature_dropout_phase2: float = 0.,
+                 shallow_phase2: bool = True,
+                 first_layer_phase2: ActivationLayer = ExULayer,
+                 hidden_layer_phase2: ActivationLayer = ReLULayer,          
                  output_dim: int = 1,
-                 featureNN_architecture_phase1: str = 'multi_output',
-                 featureNN_architecture_phase2: str = 'multi_output',
+                 featureNN_architecture_phase2: str = 'multi_output',  # options: 'single_to_multi_output', 'parallel_single_output', 'multi_output', 'monotonic_hidden_layer'
                  ):
         super().__init__()
 
-        self.NAM_features = NeuralAdditiveModel(input_size=input_size,
-                                shallow_units= shallow_units,
-                                hidden_units= hidden_units,
-                                shallow_layer= shallow_layer,
-                                hidden_layer= hidden_layer,
-                                hidden_dropout= hidden_dropout,
-                                feature_dropout= feature_dropout,
-                                output_dim= latent_var_dim,
-                                architecture_type= featureNN_architecture_phase1,                
-                                )
-       
+        """Initializes NAM hyperparameters.
 
-        self.NAM_output = NeuralAdditiveModel(input_size=latent_var_dim,
-                                shallow_units= shallow_units,
-                                hidden_units= hidden_units,
-                                shallow_layer= shallow_layer,
-                                hidden_layer= hidden_layer,
-                                hidden_dropout= hidden_dropout,
-                                feature_dropout= latent_feature_dropout,
-                                output_dim = output_dim,
-                                architecture_type= featureNN_architecture_phase2,
+        Args:
+          1) num_inputs: Number of feature inputs in input data.
+
+          Parameter types are common to both layers of the NAM (phase1 & phase2)
+          2) num_units: Number of hidden units in the first hidden layer.
+          3) hidden_units: Number of hidden units in the next hidden layers - the number of additional layers is the size of the list.
+          4) hidden_dropout: Coefficient for dropout within each Feature NNs.
+          5) feature_dropout: Coefficient for dropping out entire Feature NNs.
+          6) shallow: If True, then a shallow network with a single hidden layer is created (size: (1,num_units)),
+                   otherwise, a network with more hidden layers is created (the number of hidden layers - hidden_units+1).
+          7) first_layer: Activation and type of hidden unit (ExUs/ReLU) used in the first hidden layer.
+          8) hidden_layer: Activation and type of hidden unit used in the next hidden layers (ReLULayer/MonotonicLayer),          
+          9) architecture_type: The architecture of FeatureNN ('single_to_multi_output', 'parallel_single_output', 'multi_output')
+
+          10) latent_var_dim: The output dimension of the feature block for the first phase
+          11) output_dim: The output dimension of the feature block for the second phase - this is the number of classes in the classification task
+
+        """
+
+        self.input_size = num_inputs
+
+        # phase1 hyperparameters - latent_features:
+        self.num_units_phase1 = num_units_phase1
+        self.hidden_units_phase1 = hidden_units_phase1
+        self.hidden_dropout_phase1 = hidden_dropout_phase1
+        self.feature_dropout_phase1 = feature_dropout_phase1
+        self.shallow_phase1 = shallow_phase1
+        self.activation_first_layer_phase1 = first_layer_phase1
+        self.activation_hidden_layer_phase1 = hidden_layer_phase1
+        self.latent_var_dim = latent_var_dim
+        self.architecture_type_phase1 = featureNN_architecture_phase1
+
+        # phase1 hyperparameters - latent_features:
+        self.num_units_phase2 = num_units_phase2
+        self.hidden_units_phase2 = hidden_units_phase2
+        self.hidden_dropout_phase2 = hidden_dropout_phase2
+        self.feature_dropout_phase2 = feature_dropout_phase2
+        self.shallow_phase2 = shallow_phase2
+        self.activation_first_layer_phase2 = first_layer_phase2
+        self.activation_hidden_layer_phase2 = hidden_layer_phase2
+        self.num_classes = output_dim
+        self.architecture_type_phase2 = featureNN_architecture_phase2
+
+        self.NAM_features = NeuralAdditiveModel(
+                                num_inputs = self.input_size,
+                                num_units = self.num_units_phase1,
+                                hidden_units = self.hidden_units_phase1,
+                                hidden_dropout = self.hidden_dropout_phase1,
+                                feature_dropout = self.feature_dropout_phase1,
+                                shallow = self.shallow_phase1,
+                                first_layer = self.activation_first_layer_phase1,
+                                hidden_layer = self.activation_hidden_layer_phase1,
+                                num_classes = self.latent_var_dim,
+                                architecture_type = self.architecture_type_phase1,          
+                                )
+
+        self.NAM_output = NeuralAdditiveModel(
+                                num_inputs = self.latent_var_dim,
+                                num_units = self.num_units_phase2,
+                                hidden_units = self.hidden_units_phase2,
+                                hidden_dropout = self.hidden_dropout_phase2,
+                                feature_dropout = self.feature_dropout_phase2,
+                                shallow = self.shallow_phase2,
+                                first_layer = self.activation_first_layer_phase2,
+                                hidden_layer = self.activation_hidden_layer_phase2,
+                                num_classes = self.num_classes,
+                                architecture_type = self.architecture_type_phase2,
                                 )
 
     def forward(self, x):

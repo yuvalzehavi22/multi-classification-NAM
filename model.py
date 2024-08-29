@@ -98,7 +98,11 @@ class MonotonicLayer(ActivationLayer):
         return torch.tanh(x) + 1.
 
     def forward(self, input: torch):
-        ret = torch.matmul(input, torch.transpose(self.pos_fn(self.weight), 0, 1))
+        ret = torch.matmul(input, self.pos_fn(self.weight))
+
+        if 0:
+            print(f"Input shape: {input.shape}")
+            print(f"Weight shape: {self.pos_fn(self.weight).shape}")
         return ret
     
 

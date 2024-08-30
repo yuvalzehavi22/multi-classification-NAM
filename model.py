@@ -4,8 +4,6 @@ import torch
 import torch.nn.functional as F
 import math
 
-from mononet import MonotonicLayer
-
 def truncated_normal_(tensor, mean: float = 0., std: float = 1.):
     """
     Initializes a tensor with values from a truncated normal distribution
@@ -141,6 +139,7 @@ class FeatureNN_Base(torch.nn.Module):
         
         self.num_units = num_units
         self.hidden_units = hidden_units
+        self.dropout_val = dropout
         self.shallow = shallow
         self.activation_first_layer = first_layer
         self.activation_hidden_layer = hidden_layer
@@ -151,9 +150,9 @@ class FeatureNN_Base(torch.nn.Module):
             self.activation_first_layer(1, self.num_units)
         ])
         
+        in_units = self.num_units
         if not self.shallow:
             # Add hidden layers
-            in_units = self.num_units
             for out_units in hidden_units:
                 self.hidden_layers.append(self.activation_hidden_layer(in_units, out_units))
                 in_units = out_units  # Update in_units to the output of the last layer
@@ -171,7 +170,7 @@ class FeatureNN_Base(torch.nn.Module):
         # Pass through each hidden layer with dropout
         for layer in self.hidden_layers:
             x = layer(x)
-            if self.dropout > 0.0:
+            if self.dropout_val > 0.0:
                 x = self.dropout(x)
 
         # Final output layer
@@ -224,7 +223,7 @@ class FeatureNN(torch.nn.Module):
                                         first_layer = self.activation_first_layer,
                                         hidden_layer = self.activation_hidden_layer,          
                                         num_classes = self.num_classes,
-                                        architecture_type = self.architecture_type)
+                                        )
             
         elif self.architecture_type == 'parallel_single_output': 
             self.feature_nns = torch.nn.ModuleList([
@@ -235,7 +234,7 @@ class FeatureNN(torch.nn.Module):
                             first_layer = self.activation_first_layer,
                             hidden_layer = self.activation_hidden_layer,          
                             num_classes = 1,
-                            architecture_type = self.architecture_type)
+                            )
                     for i in range(self.num_classes)])
             
         elif self.architecture_type == 'single_to_multi_output':  
@@ -246,7 +245,7 @@ class FeatureNN(torch.nn.Module):
                                         first_layer = self.activation_first_layer,
                                         hidden_layer = self.activation_hidden_layer,          
                                         num_classes = 1,
-                                        architecture_type = self.architecture_type)
+                                        )
             
             self.output_layer = torch.nn.Linear(1, self.num_classes, bias=False)
             torch.nn.init.xavier_uniform_(self.output_layer.weight)
@@ -337,6 +336,7 @@ class NeuralAdditiveModel(torch.nn.Module):
 
         self.hidden_units = hidden_units
         self.hidden_dropout = hidden_dropout
+        self.feature_dropout_val = feature_dropout
         self.shallow = shallow
         self.activation_first_layer = first_layer
         self.activation_hidden_layer = hidden_layer
@@ -365,7 +365,7 @@ class NeuralAdditiveModel(torch.nn.Module):
         f_out = torch.stack(FeatureNN_out, dim=-1)
         
         # Sum across features and add bias
-        if self.feature_dropout > 0.0:
+        if self.feature_dropout_val > 0.0:
             f_out = self.feature_dropout(f_out)
 
         outputs = f_out.sum(axis=-1) + self.bias

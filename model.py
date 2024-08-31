@@ -115,13 +115,18 @@ class LipschitzMonotonicLayer(ActivationLayer):
                  out_features: int, 
                  weight_norms_kind: str = "one-inf", 
                  group_size: int = 2, 
-                 monotonic_constraint: list = None):
+                 monotonic_constraint = None):
+        
         super().__init__(in_features, out_features)
         
         # Initialize LipschitzLinear layer, which already manages its weight and bias internally
         self.lipschitz_layer = lmn.LipschitzLinear(in_features, out_features, kind=weight_norms_kind)
         
         # Apply GroupSort as the activation function
+        # Ensure group_size is compatible with the number of features
+        if group_size > out_features:
+            group_size = out_features  # Fallback to using the total number of features if group_size is too large
+        
         self.activation = lmn.GroupSort(group_size)
         
         # Combine the layers and apply monotonic constraint if specified
@@ -266,7 +271,7 @@ class FeatureNN_MonoBase(torch.nn.Module):
             self.activation_hidden_layer(1, 
                                          self.num_units, 
                                          weight_norms_kind=self.weight_norms_kind_first_layer, #"one-inf", 
-                                         group_size=1, 
+                                         group_size=min(self.activation_function_group_size, self.num_units), 
                                          monotonic_constraint=None)
         ])
         
@@ -278,7 +283,7 @@ class FeatureNN_MonoBase(torch.nn.Module):
                     self.activation_hidden_layer(in_units, 
                                                  out_units,
                                                  weight_norms_kind="inf", 
-                                                 group_size=1, #self.activation_function_group_size, 
+                                                 group_size=min(self.activation_function_group_size, out_units), #self.activation_function_group_size, 
                                                  monotonic_constraint=None)
                     )
                 in_units = out_units  # Update in_units to the output of the last layer
@@ -290,7 +295,7 @@ class FeatureNN_MonoBase(torch.nn.Module):
         self.output_layer = self.activation_hidden_layer(in_units, 
                                          self.num_classes, 
                                          weight_norms_kind="inf", #"one-inf", 
-                                         group_size=1, #self.activation_function_group_size, 
+                                         group_size=min(self.activation_function_group_size, self.num_classes), #self.activation_function_group_size, 
                                          monotonic_constraint=self.monotonic_constraint)      
 
     def forward(self, x):
@@ -394,7 +399,7 @@ class FeatureNN(torch.nn.Module):
                                         shallow = self.shallow,
                                         first_layer = self.activation_first_layer,
                                         hidden_layer = self.activation_hidden_layer,          
-                                        num_classes = 1,
+                                        num_classes = self.num_classes,
                                         weight_norms_kind = self.weight_norms_kind_first_layer, 
                                         group_size = self.activation_function_group_size, 
                                         monotonic_constraint = self.monotonic_constraint,

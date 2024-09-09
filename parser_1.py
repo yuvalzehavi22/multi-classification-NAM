@@ -1,5 +1,5 @@
 import argparse
-from model import ExULayer, ReLULayer, LipschitzMonotonicLayer
+from model.activation_layers import ExULayer, ReLULayer, LipschitzMonotonicLayer
 
 def parse_args():
 
@@ -15,17 +15,30 @@ def parse_args():
 
     # ----------------------- model parameters (for both phases) -----------------------
     parser.add_argument(
-        '--ActivateLayers_pase1', 
+        '--ActivateLayers_phase1', 
         type=str, 
         default='ReLU', 
         help='Activation layer for phase1. options: ReLU, ExU, LipschitzMonotonic, ExU_ReLU'
     )
+    parser.add_argument(
+        '--ActivateLayers_phase2', 
+        type=str, 
+        default=None, 
+        help='Activation layer for phase2 (optional). options: ReLU, ExU, LipschitzMonotonic, ExU_ReLU'
+    )
+
     parser.add_argument(
         '--ActivateLayers_pase2', 
         type=str, 
         default=None, 
         help='Activation layer for phase2 (optional). options: ReLU, ExU, LipschitzMonotonic, ExU_ReLU'
     )
+
+# config[f'first_ActivateLayer_phase{phase+1}'] = LipschitzMonotonicLayer
+# config[f'first_hidden_dim_phase{phase+1}'] = 128           
+# config[f'shallow_phase{phase+1}'] = False
+# config[f'hidden_ActivateLayer_phase{phase+1}'] = LipschitzMonotonicLayer
+# config[f'hidden_dim_phase{phase+1}'] = [128, 64]
 
     parser.add_argument('--hidden_dropout_phase1', type=int, default=0, help='Coefficient for dropout within each Feature NNs')
     parser.add_argument('--hidden_dropout_phase2', type=int, default=0, help='Coefficient for dropout within each Feature NNs')
@@ -57,7 +70,11 @@ def parse_args():
     parser.add_argument('--batch_size', type=int, default=1024, help='Batch size')
     parser.add_argument('--learning_rate', type=float, default=0.0035, help='Learning rate')
     parser.add_argument('--weight_decay', type=float, default=0.0001, help='Weight decay')
-    parser.add_argument("--l2_regularization",type=float, default=0.0, help="l2 weight decay")
+
+    parser.add_argument("--l2_lambda_phase1",type=float, default=0.0, help="l2 lambda regularization for the gams outputs of phase1")
+    parser.add_argument("--l2_lambda_phase2",type=float, default=0.0, help="l2 lambda regularization for the gams outputs of phase2")
+    parser.add_argument("--l1_lambda_phase1",type=float, default=0.0, help="l1 lambda regularization for the gams outputs of phase1")
+    parser.add_argument("--l1_lambda_phase2",type=float, default=0.0, help="l1 lambda regularization for the gams outputs of phase2")
 
     parser.add_argument('--eval_every', type=int, default=1, help='Evaluate every N epochs')
     parser.add_argument('--early_stop_delta', type=float, default=0.0, help='Min delta for early stopping')
@@ -169,9 +186,9 @@ def parse_args():
 def define_experiment(args):
     config = dict()
 
-    hirarchical_net = [args.ActivateLayers_pase1]
+    hirarchical_net = [args.ActivateLayers_phase1]
     if args.ActivateLayers_pase2 is not None:
-        hirarchical_net.append(args.ActivateLayers_pase2)
+        hirarchical_net.append(args.ActivateLayers_phase2)
         
     config['hirarchical_net'] = hirarchical_net
 

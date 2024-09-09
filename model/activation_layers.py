@@ -1,6 +1,8 @@
 import numpy as np
+from typing import Union, Iterable, Sized, Tuple
 import torch
 import torch.nn.functional as F
+import math
 import monotonicnetworks as lmn
 
 def truncated_normal_(tensor, mean: float = 0., std: float = 1.):
@@ -139,17 +141,3 @@ class LipschitzMonotonicLayer(ActivationLayer):
     def forward(self, x):
         # The forward pass applies the layers in sequence
         return self.layer(x)
-
-        
-    #     # Define the lipschitz layer with the kind of Lipschitz constraint you want
-    #     self.lip_nn = torch.nn.Sequential(
-    #         lmn.LipschitzLinear(in_features, 32, kind=kind),
-    #         lmn.GroupSort(2),  # GroupSort is used as the activation function
-    #         lmn.LipschitzLinear(32, out_features, kind="inf"),
-    #     )
-        
-    #     # Wrap the lipschitz network with monotonic constraints
-    #     self.monotonic_nn = lmn.MonotonicWrapper(self.lip_nn, monotonic_constraints=monotonic_constraints)
-
-    # def forward(self, x):
-    #     return self.monotonic_nn(x)

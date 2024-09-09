@@ -4,241 +4,33 @@ import torch
 import torch.nn.functional as F
 import math
 import monotonicnetworks as lmn
-
-def truncated_normal_(tensor, mean: float = 0., std: float = 1.):
-    """
-    Initializes a tensor with values from a truncated normal distribution
-    """
-    size = tensor.shape
-    tmp = tensor.new_empty(size + (4,)).normal_()
-    valid = (tmp < 2) & (tmp > -2)
-    ind = valid.max(-1, keepdim=True)[1]
-    tensor.data.copy_(tmp.gather(-1, ind).squeeze(-1))
-    tensor.data.mul_(std).add_(mean)
-
-# ActivationLayer Class
-class ActivationLayer(torch.nn.Module):
-    """
-    Abstract base class for layers with weights and biases
-    """
-    def __init__(self,
-                 in_features: int,
-                 out_features: int):
-        super().__init__()
-        
-        self.weight = torch.nn.Parameter(torch.empty((in_features, out_features)))
-        self.bias = torch.nn.Parameter(torch.empty(in_features)) #before it was in_features - understand why!
-
-    def forward(self, x):
-        raise NotImplementedError("abstract method called")
-
-
-class ExULayer(ActivationLayer):
-    """
-    Custom layer using exponential activation with weight and bias initialization
-    """
-    def __init__(self,
-                 in_features: int,
-                 out_features: int):
-        super().__init__(in_features, out_features)
-        
-        truncated_normal_(self.weight, mean=4.0, std=0.5)
-        truncated_normal_(self.bias, std=0.5)
-
-    def forward(self, x): 
-        # First, multiply the input by the exponential of the weights
-        exu = (x - self.bias) @ torch.exp(self.weight)
-        output = torch.clip(exu, 0, 1)
-        
-        if 0:
-            print('ExULayer_weights:', self.weight.detach().cpu().numpy())
-            print('ExULayer Normalization L1\n:', torch.linalg.norm(self.weight.t(), 1, dim=0))
-            print('ExULayer Normalization L2\n:',torch.linalg.norm(self.weight.t(), 2, dim=0))
-        
-        return output
-
-
-class ReLULayer(ActivationLayer):
-    """
-    Custom layer using ReLU activation with Xavier weight initialization
-    """
-    def __init__(self,
-                 in_features: int,
-                 out_features: int):
-        super().__init__(in_features, out_features)
-        
-        torch.nn.init.xavier_uniform_(self.weight)
-        truncated_normal_(self.bias, std=0.5)
-
-    def forward(self, x):
-        output = F.relu((x - self.bias) @ self.weight)
-        
-        if 0:
-            print('ReLULayer_weights:', self.weight.detach().cpu().numpy())
-            print('ReLULayer Normalization L1:\n', torch.linalg.norm(self.weight.t(), 1, dim=0))
-            print('ReLULayer Normalization L2:\n',torch.linalg.norm(self.weight.t(), 2, dim=0))
-        
-        return output
-    
-
-class MonotonicLayer(ActivationLayer):
-
-    def __init__(self, 
-                 in_features: int, 
-                 out_features: int):
-        super().__init__(in_features, out_features)
-
-        torch.nn.init.normal_(self.weight, mean=0)
-
-        self.fn = 'tanh_p1'
-        self.pos_fn = self.pos_tanh
-        
-    def pos_tanh(self, x):
-        return torch.tanh(x) + 1.
-
-    def forward(self, input: torch):
-        ret = torch.matmul(input, self.pos_fn(self.weight))
-
-        if 0:
-            print(f"Input shape: {input.shape}")
-            print(f"Weight shape: {self.pos_fn(self.weight).shape}")
-        return ret
-
-
-class LipschitzMonotonicLayer(ActivationLayer):
-    """
-    A layer that combines Lipschitz constraints with monotonicity, inheriting from ActivationLayer
-    to ensure weights and biases are handled as model parameters.
-    """
-    def __init__(self, 
-                 in_features: int, 
-                 out_features: int, 
-                 weight_norms_kind: str = "one-inf", 
-                 group_size: int = 2, 
-                 monotonic_constraint = None):
-        
-        super().__init__(in_features, out_features)
-        
-        # Initialize LipschitzLinear layer, which already manages its weight and bias internally
-        self.lipschitz_layer = lmn.LipschitzLinear(in_features, out_features, kind=weight_norms_kind)
-        
-        # Apply GroupSort as the activation function
-        # Ensure group_size is compatible with the number of features
-        if group_size > out_features:
-            group_size = out_features  # Fallback to using the total number of features if group_size is too large
-        
-        self.activation = lmn.GroupSort(group_size)
-        
-        # Combine the layers and apply monotonic constraint if specified
-        if monotonic_constraint is not None:
-            self.layer = lmn.MonotonicWrapper(
-                torch.nn.Sequential(self.lipschitz_layer, self.activation),
-                monotonic_constraints=monotonic_constraint
-            )
-        else:
-            self.layer = torch.nn.Sequential(self.lipschitz_layer, self.activation)
-
-    def forward(self, x):
-        # The forward pass applies the layers in sequence
-        return self.layer(x)
-    
-
-#####################################################################################
-################################### MODEL CLASSES ###################################
-#####################################################################################
+from model.activation_layers import *
 
 # FeatureNN Class
 class FeatureNN_Base(torch.nn.Module):
     """
-    Neural Network model for each individual feature.
+    Neural Network model for each individual feature, adaptable for different activation functions and architectures.
     """
     def __init__(self,
                  num_units: int= 64,
                  hidden_units: list = [64, 32],
-                 dropout: float = .5,
+                 dropout: float = 0.5,
                  shallow: bool = True,
-                 first_layer: ActivationLayer = ExULayer,
-                 hidden_layer: ActivationLayer = ReLULayer,          
-                 num_classes: int = 1,
-                 ):
-          
-        """Initializes FeatureNN hyperparameters.
-
-        Args:
-          num_units: Number of hidden units in the first hidden layer.
-          hidden_units: Number of hidden units in the next hidden layers - the number of additional layers is the size of the list.
-          dropout: Coefficient for dropout regularization.
-          shallow: If True, then a shallow network with a single hidden layer is created (size: (1,num_units)),
-                   otherwise, a network with more hidden layers is created (the number of hidden layers - hidden_units+1).
-          first_layer: Activation and type of hidden unit (ExUs/ReLU) used in the first hidden layer.
-          hidden_layer: Activation and type of hidden unit used in the next hidden layers (ReLULayer/MonotonicLayer),          
-          num_classes: The output dimension of the feature block (adjusted to fit to muli-classification task)
-        """
-        super().__init__()
-        
-        self.num_units = num_units
-        self.hidden_units = hidden_units
-        self.dropout_val = dropout
-        self.shallow = shallow
-        self.activation_first_layer = first_layer
-        self.activation_hidden_layer = hidden_layer
-        self.num_classes = num_classes
-        
-        # First layer
-        self.hidden_layers = torch.nn.ModuleList([
-            self.activation_first_layer(1, self.num_units)
-        ])
-        
-        in_units = self.num_units
-        if not self.shallow:
-            # Add hidden layers
-            for out_units in hidden_units:
-                self.hidden_layers.append(self.activation_hidden_layer(in_units, out_units))
-                in_units = out_units  # Update in_units to the output of the last layer
-        
-        # Dropout layer
-        self.dropout = torch.nn.Dropout(p=dropout) 
-        
-        # Last linear layer
-        self.output_layer = torch.nn.Linear(in_units, self.num_classes, bias=False)
-        torch.nn.init.xavier_uniform_(self.output_layer.weight)      
-
-    def forward(self, x):
-        x = x.unsqueeze(1)
-
-        # Pass through each hidden layer with dropout
-        for layer in self.hidden_layers:
-            x = layer(x)
-            if self.dropout_val > 0.0:
-                x = self.dropout(x)
-
-        # Final output layer
-        outputs = self.output_layer(x)
-        
-        return outputs
-    
-
-# FeatureNN Monotonic constrain Class
-class FeatureNN_MonoBase(torch.nn.Module):
-    """
-    Neural Network model for each individual feature - constrain monotonic relationship.
-    """
-    def __init__(self,
-                 num_units: int = 64,
-                 hidden_units: list = [64, 32],
-                 dropout: float = .5,
-                 shallow: bool = True,
-                 first_layer: ActivationLayer = LipschitzMonotonicLayer,
-                 hidden_layer: ActivationLayer = LipschitzMonotonicLayer,          
+                 first_layer: str = 'ReLU',
+                 hidden_layer: str = 'ReLU',
+                #  first_layer: ActivationLayer = ExULayer,
+                #  hidden_layer: ActivationLayer = ReLULayer,          #ReLU, ExU, LipschitzMonotonic, ExU_ReLU
                  num_classes: int = 1,
                  weight_norms_kind: str = "one-inf", 
                  group_size: int = 2, 
                  monotonic_constraint: list = None
                  ):
           
-        """Initializes FeatureNN_MonoBase hyperparameters.
+        """
+        Initializes FeatureNN perparameters.
 
-        Args:
+        Perparameters:
+        --------------
           num_units: Number of hidden units in the first hidden layer.
           hidden_units: Number of hidden units in the next hidden layers - the number of additional layers is the size of the list.
           dropout: Coefficient for dropout regularization.
@@ -247,56 +39,108 @@ class FeatureNN_MonoBase(torch.nn.Module):
           first_layer: Activation and type of hidden unit (ExUs/ReLU) used in the first hidden layer.
           hidden_layer: Activation and type of hidden unit used in the next hidden layers (ReLULayer/MonotonicLayer),          
           num_classes: The output dimension of the feature block (adjusted to fit to muli-classification task)
-          weight_norms_kind:  
-          group_size: 
-          monotonic_constraint: 
+          weight_norms_kind: Type of weight normalization (for LipschitzMonotonic layers).
+          group_size: Group size parameter for monotonic constraints.
+          monotonic_constraint: Monotonic constraints for output layer (optional).
         """
-        super().__init__()
+
+        super(FeatureNN_Base, self).__init__()
         
         self.num_units = num_units
         self.hidden_units = hidden_units
         self.dropout_val = dropout
-        self.shallow = shallow
-        self.activation_first_layer = first_layer
-        self.activation_hidden_layer = hidden_layer
         self.num_classes = num_classes
-        
-        #monotonic parameters
-        self.weight_norms_kind_first_layer = weight_norms_kind
-        self.activation_function_group_size = group_size
-        self.monotonic_constraint = monotonic_constraint
+        self.shallow = shallow
 
-        # First layer
-        self.hidden_layers = torch.nn.ModuleList([
-            self.activation_hidden_layer(1, 
-                                         self.num_units, 
-                                         weight_norms_kind=self.weight_norms_kind_first_layer, #"one-inf", 
-                                         group_size=min(self.activation_function_group_size, self.num_units), 
-                                         monotonic_constraint=None)
-        ])
+        # Initialize dropout layer
+        self.dropout = torch.nn.Dropout(p=self.dropout_val)
+
+        # Set activation functions for first and hidden layers
+        self.activation_first_layer = self._get_activation(first_layer, 'first')
+        self.activation_hidden_layer = self._get_activation(hidden_layer, 'hidden')
+
+        # Monotonic-specific parameters
+        if 'LipschitzMonotonic' in [first_layer, hidden_layer]:
+            self.weight_norms_kind_first_layer = weight_norms_kind
+            self.activation_function_group_size = group_size
+            self.monotonic_constraint = monotonic_constraint
         
-        in_units = self.num_units
+        # Create the network layers
+        self._initialize_layers()
+
+
+    def _get_activation(self, layer_name: str, layer_type: str):
+        """
+        Returns the appropriate activation layer based on the layer name.
+
+        Args:
+        -----
+        layer_name: Name of the activation function (e.g., 'ReLU', 'ExU', 'LipschitzMonotonic').
+        layer_type: Type of the layer ('first' or 'hidden').
+
+        Returns:
+        --------
+        activation_layer: Corresponding activation layer class.
+        """
+        if layer_name == 'ReLU':
+            return ReLULayer
+        elif layer_name == 'ExU':
+            return ExULayer
+        elif layer_name == 'LipschitzMonotonic':
+            return LipschitzMonotonicLayer
+        else:
+            raise NotImplementedError(f"{layer_type.capitalize()} layer '{layer_name}' is not implemented.")
+
+
+    def _initialize_layers(self):
+        """
+        Initializes the network layers based on the defined architecture.
+        """
+        # Initialize the first layer
+        self.hidden_layers = torch.nn.ModuleList()
+
+        if self.activation_first_layer == LipschitzMonotonicLayer:
+            self.hidden_layers.append(self.activation_first_layer(1, self.num_units,
+                                                                 weight_norms_kind=self.weight_norms_kind_first_layer, #"one-inf",
+                                                                 group_size=min(self.activation_function_group_size, self.num_units),
+                                                                 monotonic_constraint=None))
+        else:
+            self.hidden_layers.append(self.activation_first_layer(1, self.num_units))
+
+        # Add additional hidden layers if not shallow
         if not self.shallow:
-            # Add hidden layers
-            for out_units in hidden_units:
-                self.hidden_layers.append(
-                    self.activation_hidden_layer(in_units, 
-                                                 out_units,
-                                                 weight_norms_kind="inf", 
-                                                 group_size=min(self.activation_function_group_size, out_units), #self.activation_function_group_size, 
-                                                 monotonic_constraint=None)
-                    )
-                in_units = out_units  # Update in_units to the output of the last layer
+            in_units = self.num_units
+            for out_units in self.hidden_units:
+                if self.activation_hidden_layer == LipschitzMonotonicLayer:
+                    self.hidden_layers.append(self.activation_hidden_layer(in_units, out_units,
+                                                                           weight_norms_kind="inf",
+                                                                           group_size=min(self.activation_function_group_size, out_units), 
+                                                                           monotonic_constraint=None))
+                else:
+                    self.hidden_layers.append(self.activation_hidden_layer(in_units, out_units))
+                in_units = out_units  # Update input size for the next layer
+
+            # Initialize the output layer
+            self._initialize_output_layer(in_units)
+
+
+    def _initialize_output_layer(self, in_units: int):
+        """
+        Initializes the output layer based on whether it's a monotonic network.
         
-        # Dropout layer
-        self.dropout = torch.nn.Dropout(p=dropout) 
-        
-        # Last linear layer
-        self.output_layer = self.activation_hidden_layer(in_units, 
-                                         self.num_classes, 
-                                         weight_norms_kind="inf", #"one-inf", 
-                                         group_size=min(self.activation_function_group_size, self.num_classes), #self.activation_function_group_size, 
-                                         monotonic_constraint=self.monotonic_constraint)      
+        Args:
+        -----
+        in_units: Number of input units for the output layer.
+        """
+        if self.activation_hidden_layer == LipschitzMonotonicLayer:
+            self.output_layer = self.activation_hidden_layer(in_units, self.num_classes,
+                                                             weight_norms_kind="inf",
+                                                             group_size=min(self.activation_function_group_size, self.num_classes),
+                                                             monotonic_constraint=self.monotonic_constraint)
+        else:
+            self.output_layer = torch.nn.Linear(in_units, self.num_classes, bias=False)
+            torch.nn.init.xavier_uniform_(self.output_layer.weight)
+
 
     def forward(self, x):
         x = x.unsqueeze(1)
@@ -323,8 +167,10 @@ class FeatureNN(torch.nn.Module):
                  hidden_units: list = [64, 32],
                  dropout: float = .5,
                  shallow: bool = True,
-                 first_layer: ActivationLayer = ExULayer,
-                 hidden_layer: ActivationLayer = ReLULayer,          
+                 first_layer: str = 'ReLU',
+                 hidden_layer: str = 'ReLU',
+                #  first_layer: ActivationLayer = ExULayer,
+                #  hidden_layer: ActivationLayer = ReLULayer,          
                  num_classes: int = 1,
                  architecture_type: str = 'multi_output',  # options: 'single_to_multi_output', 'parallel_single_output', 'multi_output', 'monotonic_hidden_layer'
 
@@ -350,7 +196,16 @@ class FeatureNN(torch.nn.Module):
         self.activation_hidden_layer = hidden_layer
         self.num_classes = num_classes
         self.architecture_type = architecture_type
-      
+
+        # Monotonic parameters
+        self.weight_norms_kind_first_layer = weight_norms_kind
+        self.activation_function_group_size = group_size
+        self.monotonic_constraint = monotonic_constraint
+
+        # Create the NAM network architectures
+        self._initialize_NAM_block_architecture()
+    
+    def _initialize_NAM_block_architecture(self):
         # Different architectures
         if self.architecture_type == 'multi_output':
             self.feature_nns = FeatureNN_Base(num_units= self.num_units,
@@ -360,6 +215,9 @@ class FeatureNN(torch.nn.Module):
                                         first_layer = self.activation_first_layer,
                                         hidden_layer = self.activation_hidden_layer,          
                                         num_classes = self.num_classes,
+                                        weight_norms_kind = self.weight_norms_kind_first_layer, 
+                                        group_size = self.activation_function_group_size, 
+                                        monotonic_constraint = self.monotonic_constraint,
                                         )
             
         elif self.architecture_type == 'parallel_single_output': 
@@ -371,6 +229,9 @@ class FeatureNN(torch.nn.Module):
                             first_layer = self.activation_first_layer,
                             hidden_layer = self.activation_hidden_layer,          
                             num_classes = 1,
+                            weight_norms_kind = self.weight_norms_kind_first_layer, 
+                            group_size = self.activation_function_group_size, 
+                            monotonic_constraint = self.monotonic_constraint,
                             )
                     for i in range(self.num_classes)])
             
@@ -382,32 +243,21 @@ class FeatureNN(torch.nn.Module):
                                         first_layer = self.activation_first_layer,
                                         hidden_layer = self.activation_hidden_layer,          
                                         num_classes = 1,
-                                        )
-            
-            self.output_layer = torch.nn.Linear(1, self.num_classes, bias=False)
-            torch.nn.init.xavier_uniform_(self.output_layer.weight)
-
-        elif self.architecture_type == 'monotonic_hidden_layer': #Enforce Monotonic Relationships
-            #monotonic parameters
-            self.weight_norms_kind_first_layer = weight_norms_kind
-            self.activation_function_group_size = group_size
-            self.monotonic_constraint = monotonic_constraint
-
-            self.feature_nns = FeatureNN_MonoBase(num_units= self.num_units,
-                                        hidden_units = self.hidden_units,
-                                        dropout = self.dropout_val,
-                                        shallow = self.shallow,
-                                        first_layer = self.activation_first_layer,
-                                        hidden_layer = self.activation_hidden_layer,          
-                                        num_classes = self.num_classes,
                                         weight_norms_kind = self.weight_norms_kind_first_layer, 
                                         group_size = self.activation_function_group_size, 
                                         monotonic_constraint = self.monotonic_constraint,
                                         )
+            
+            self.output_layer = torch.nn.Linear(1, self.num_classes, bias=False)
+            torch.nn.init.xavier_uniform_(self.output_layer.weight)
+        
+        else:
+            raise NotImplementedError(f"{self.architecture_type} architecture type is not implemented.")
+
 
     def forward(self, x):
         
-        if self.architecture_type == 'multi_output' or self.architecture_type == 'monotonic_hidden_layer':
+        if self.architecture_type == 'multi_output':
             outputs = self.feature_nns(x)
 
         elif self.architecture_type == 'parallel_single_output':
@@ -435,8 +285,8 @@ class NeuralAdditiveModel(torch.nn.Module):
                  hidden_dropout: float = 0.,
                  feature_dropout: float = 0.,
                  shallow: bool = True,
-                 first_layer: ActivationLayer = ExULayer,
-                 hidden_layer: ActivationLayer = ReLULayer,          
+                 first_layer: str = 'ReLU',
+                 hidden_layer: str = 'ReLU',        
                  num_classes: int = 1,
                  architecture_type: str = 'multi_output',  # options: 'single_to_multi_output', 'parallel_single_output', 'multi_output', 'monotonic_hidden_layer'
                  weight_norms_kind: str = "one-inf", 
@@ -445,9 +295,10 @@ class NeuralAdditiveModel(torch.nn.Module):
                  ):
         super().__init__()
 
-        """Initializes NAM hyperparameters.
+        """
+        Initializes NAM Parameters.
 
-        Args:
+        Perparameters:
           num_inputs: Number of feature inputs in input data.
           num_units: Number of hidden units in the first hidden layer.
           hidden_units: Number of hidden units in the next hidden layers - the number of additional layers is the size of the list.
@@ -481,37 +332,25 @@ class NeuralAdditiveModel(torch.nn.Module):
         self.num_classes = num_classes
         self.architecture_type = architecture_type
 
-        if self.architecture_type == 'monotonic_hidden_layer': #Enforce Monotonic Relationships
-            #monotonic parameters
-            self.weight_norms_kind_first_layer = weight_norms_kind
-            self.activation_function_group_size = group_size
-            self.monotonic_constraint = monotonic_constraint
-        
-            self.feature_nns = torch.nn.ModuleList([
-                                        FeatureNN(num_units=self.num_units[i],
-                                                hidden_units = self.hidden_units,
-                                                dropout = self.hidden_dropout,
-                                                shallow = self.shallow,
-                                                first_layer = self.activation_first_layer,
-                                                hidden_layer = self.activation_hidden_layer,          
-                                                num_classes = self.num_classes,
-                                                architecture_type = self.architecture_type,
-                                                weight_norms_kind = self.weight_norms_kind_first_layer, 
-                                                group_size = self.activation_function_group_size, 
-                                                monotonic_constraint = self.monotonic_constraint,
-                                                ) 
-                                        for i in range(self.input_size)])
-        else:
-            self.feature_nns = torch.nn.ModuleList([
-                                        FeatureNN(num_units=self.num_units[i],
-                                                hidden_units = self.hidden_units,
-                                                dropout = self.hidden_dropout,
-                                                shallow = self.shallow,
-                                                first_layer = self.activation_first_layer,
-                                                hidden_layer = self.activation_hidden_layer,          
-                                                num_classes = self.num_classes,
-                                                architecture_type = self.architecture_type) 
-                                        for i in range(self.input_size)])
+        # Monotonic parameters
+        self.weight_norms_kind_first_layer = weight_norms_kind
+        self.activation_function_group_size = group_size
+        self.monotonic_constraint = monotonic_constraint
+    
+        self.feature_nns = torch.nn.ModuleList([
+                                    FeatureNN(num_units=self.num_units[i],
+                                            hidden_units = self.hidden_units,
+                                            dropout = self.hidden_dropout,
+                                            shallow = self.shallow,
+                                            first_layer = self.activation_first_layer,
+                                            hidden_layer = self.activation_hidden_layer,          
+                                            num_classes = self.num_classes,
+                                            architecture_type = self.architecture_type,
+                                            weight_norms_kind = self.weight_norms_kind_first_layer, 
+                                            group_size = self.activation_function_group_size, 
+                                            monotonic_constraint = self.monotonic_constraint,
+                                            ) 
+                                    for i in range(self.input_size)])
         
         self.feature_dropout = torch.nn.Dropout(p=feature_dropout)
         self.bias = torch.nn.Parameter(torch.zeros(self.num_classes))
@@ -545,14 +384,17 @@ class HierarchNeuralAdditiveModel(torch.nn.Module):
     """
     def __init__(self,
                  num_inputs: int,
+                 task_type: str = 'regression',
+                 hierarch_net: bool = True,
+
                  #phase1 - latent_features:
                  num_units_phase1: int= 64,
                  hidden_units_phase1: list = [64, 32],
                  hidden_dropout_phase1: float = 0.,
                  feature_dropout_phase1: float = 0.,
                  shallow_phase1: bool = True,
-                 first_layer_phase1: ActivationLayer = ExULayer,
-                 hidden_layer_phase1: ActivationLayer = ReLULayer,          
+                 first_layer_phase1: str = 'ReLU',
+                 hidden_layer_phase1: str = 'ReLU',         
                  latent_var_dim: int = 1,
                  featureNN_architecture_phase1: str = 'multi_output',  # options: 'single_to_multi_output', 'parallel_single_output', 'multi_output', 'monotonic_hidden_layer'
                  weight_norms_kind_phase1: str = "one-inf", 
@@ -564,8 +406,8 @@ class HierarchNeuralAdditiveModel(torch.nn.Module):
                  hidden_dropout_phase2: float = 0.,
                  feature_dropout_phase2: float = 0.,
                  shallow_phase2: bool = True,
-                 first_layer_phase2: ActivationLayer = ExULayer,
-                 hidden_layer_phase2: ActivationLayer = ReLULayer,          
+                 first_layer_phase2: str = 'ReLU',
+                 hidden_layer_phase2: str = 'ReLU',          
                  output_dim: int = 1,
                  featureNN_architecture_phase2: str = 'multi_output',  # options: 'single_to_multi_output', 'parallel_single_output', 'multi_output', 'monotonic_hidden_layer'
                  weight_norms_kind_phase2: str = "one-inf", 
@@ -574,10 +416,13 @@ class HierarchNeuralAdditiveModel(torch.nn.Module):
                  ):
         super().__init__()
 
-        """Initializes NAM hyperparameters.
+        """
+        Initializes NAM Parameters.
 
-        Args:
+        Parameters:
           1) num_inputs: Number of feature inputs in input data.
+          2) task_type: The type of task. Options: 'regression', 'binary_classification', 'multi_classification'.
+          3) hierarch_net: Boolean var that deteramine if using the hirarchial network
 
           Parameter types are common to both layers of the NAM (phase1 & phase2)
           2) num_units: Number of hidden units in the first hidden layer.
@@ -596,6 +441,8 @@ class HierarchNeuralAdditiveModel(torch.nn.Module):
         """
 
         self.input_size = num_inputs
+        self.task_type = task_type
+        self.hierarch_net = hierarch_net
 
         # phase1 hyperparameters - latent_features:
         self.num_units_phase1 = num_units_phase1
@@ -656,21 +503,37 @@ class HierarchNeuralAdditiveModel(torch.nn.Module):
                                 group_size = self.activation_function_group_size_phase2, 
                                 monotonic_constraint = self.monotonic_constraint_phase2,   
                                 )
+        
+        # Define activation based on task type
+        if self.task_type == 'binary_classification':
+            self.final_activation = torch.nn.Sigmoid()
+        elif self.task_type == 'multi_classification':
+            self.final_activation = torch.nn.Softmax(dim=-1)  # Softmax for multi-class classification
+        else:
+            self.final_activation = None  # No activation for regression (linear output)
+
 
     def forward(self, x):
+        latent_outputs, phase1_gams_out = self.NAM_features(x)
+        if not self.hierarch_net:
+            if self.final_activation:
+                outputs = self.activation(latent_outputs)
+            return outputs, phase1_gams_out
         
-        latent_outputs, f_out = self.NAM_features(x)
+        else:
+            outputs, phase2_gams_out = self.NAM_output(latent_outputs)
+        
+            # Apply softmax to get class probabilities
+    #         outputs = torch.softmax(outputs, dim=-1)
+            # Apply activation based on the task
+            if self.final_activation:
+                outputs = self.activation(outputs)
 
-        outputs, lat_f_out = self.NAM_output(latent_outputs)
-       
-         # Apply softmax to get class probabilities
-#         outputs = torch.softmax(outputs, dim=-1)
-
-        if 0:
-            print('x:', x.shape)
-            print('latent_outputs:',latent_outputs.shape)
-            print('f_out:',f_out.shape)
-            print('outputs:',outputs.shape)
-            print('lat_f_out:',lat_f_out.shape)  
-            
-        return outputs, lat_f_out
+            if 0:
+                print('x:', x.shape)
+                print('latent_outputs:',latent_outputs.shape)
+                print('f_out:',phase1_gams_out.shape)
+                print('outputs:',outputs.shape)
+                print('lat_f_out:',phase2_gams_out.shape)  
+                
+            return outputs, phase1_gams_out, phase2_gams_out

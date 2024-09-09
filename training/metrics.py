@@ -3,46 +3,6 @@ import torch
 import torch.nn.functional as F
 
 
-def l2_penalty(params, l2_lambda =0.):
-    return l2_lambda * (params ** 2).sum() / params.shape[1]
-
-def l1_penalty(params, l1_lambda):
-    l1_norm =  torch.stack([torch.linalg.norm(p, 1) for p in params], dim=0).sum()
-    return l1_lambda*l1_norm
-
-def penalized_binary_cross_entropy(logits, truth, fnn_out, feature_penalty=0.):
-    return F.binary_cross_entropy_with_logits(logits.view(-1), truth.view(-1)) + l2_penalty(fnn_out, feature_penalty)
-
-def penalized_cross_entropy(logits, truth, fnn_out, feature_penalty=0.):
-    return F.cross_entropy(logits.view(-1), truth.view(-1)) + l2_penalty(fnn_out, feature_penalty)
-
-def penalized_mse(logits, truth, fnn_out, feature_penalty=0.):
-    return F.mse_loss(logits.view(-1), truth.view(-1)) + l2_penalty(fnn_out, feature_penalty)
-
-# def get_loss_function(task_type):
-#     """
-#     Selects the appropriate loss function based on the task type.
-    
-#     Parameters:
-#     ----------
-#     task_type : str
-#         Type of the task: 'regression', 'binary_classification', 'multi_classification'.
-        
-#     Returns:
-#     -------
-#     loss_fn : function
-#         The selected loss function.
-#     """
-#     if task_type == 'binary_classification':
-#         return penalized_binary_cross_entropy
-#     elif task_type == 'multi_classification':
-#         return penalized_cross_entropy
-#     elif task_type == 'regression':
-#         return penalized_mse
-#     else:
-#         raise ValueError(f"Unknown task type: {task_type}")
-
-
 def calculate_metric(logits,
                      truths,
                      regression=True):
@@ -59,3 +19,75 @@ def calculate_metric(logits,
 
 def accuracy(logits, truths):
     return (((truths.view(-1) > 0) == (logits.view(-1) > 0.5)).sum() / truths.numel()).item()
+
+
+def evaluate_classification_error(self, X_test, y_test, device, batch_size=4096):
+        """This is for evaluation of one or multi-class classification error rate."""
+        X_test = torch.as_tensor(X_test, device=device)
+        y_test = check_numpy(y_test)
+        self.model.train(False)
+        with torch.no_grad():
+            logits = process_in_chunks(self.model, X_test, batch_size=batch_size)
+            logits = check_numpy(logits)
+            if logits.ndim == 1:
+                pred = (logits >= 0).astype(int)
+            else:
+                pred = logits.argmax(axis=-1)
+            error_rate = (y_test != pred).mean()
+        return error_rate
+
+def evaluate_negative_auc(self, X_test, y_test, device, batch_size=4096):
+    X_test = torch.as_tensor(X_test, device=device)
+    y_test = check_numpy(y_test)
+    self.model.train(False)
+    with torch.no_grad():
+        logits = process_in_chunks(self.model, X_test, batch_size=batch_size)
+        logits = check_numpy(logits)
+        auc = roc_auc_score(y_test, logits)
+
+    return -auc
+
+def evaluate_mse(self, X_test, y_test, device, batch_size=4096):
+    X_test = torch.as_tensor(X_test, device=device)
+    y_test = check_numpy(y_test)
+    self.model.train(False)
+    with torch.no_grad():
+        prediction = process_in_chunks(self.model, X_test, batch_size=batch_size)
+        prediction = check_numpy(prediction)
+        error_rate = ((y_test - prediction) ** 2).mean()
+    error_rate = float(error_rate)  # To avoid annoying JSON unserializable bug
+    return error_rate
+
+def evaluate_multiple_mse(self, X_test, y_test, device, batch_size=4096):
+    X_test = torch.as_tensor(X_test, device=device)
+    y_test = check_numpy(y_test)
+    self.model.train(False)
+    with torch.no_grad():
+        prediction = process_in_chunks(self.model, X_test, batch_size=batch_size)
+        prediction = check_numpy(prediction)
+        error_rate = ((y_test - prediction) ** 2).mean(axis=0)
+    return error_rate.astype(float).tolist()
+
+def evaluate_ce_loss(self, X_test, y_test, device, batch_size=512):
+    """Evaluate cross entropy loss for binary or multi-class targets.
+
+    Args:
+        X_test: input features.
+        y_test (numpy Int array or torch Long tensor): the target classes.
+
+    Returns:
+        celoss (float): the average cross entropy loss.
+    """
+    X_test = torch.as_tensor(X_test, device=device)
+    y_test = check_numpy(y_test)
+    self.model.train(False)
+    with torch.no_grad():
+        logits = (process_in_chunks(self.model, X_test, batch_size=batch_size))
+        y_test = torch.tensor(y_test, device=device)
+
+        if logits.ndim == 1:
+            celoss = F.binary_cross_entropy_with_logits(logits, y_test.float()).item()
+        else:
+            celoss = F.cross_entropy(logits, y_test).item()
+    celoss = float(celoss)  # To avoid annoying JSON unserializable bug
+    return celoss

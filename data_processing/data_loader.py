@@ -196,27 +196,27 @@ class SyntheticDatasetGenerator:
 
         return y
 
-    # @staticmethod
-    # def make_loader(X, y, batch_size=32):
-    #     """
-    #     Create a DataLoader from input features and target values.
+    @staticmethod
+    def make_loader(X, y, batch_size=32):
+        """
+        Create a DataLoader from input features and target values.
         
-    #     Parameters:
-    #     -----------
-    #     X : torch.Tensor
-    #         Input features.
+        Parameters:
+        -----------
+        X : torch.Tensor
+            Input features.
         
-    #     y : torch.Tensor
-    #         Target values.
+        y : torch.Tensor
+            Target values.
         
-    #     batch_size : int, optional (default=32)
-    #         Number of samples per batch.
+        batch_size : int, optional (default=32)
+            Number of samples per batch.
 
-    #     Returns:
-    #     --------
-    #     DataLoader
-    #         PyTorch DataLoader for the dataset.
-    #     """
-    #     dataset = TensorDataset(X, y)
-    #     loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-    #     return loader
+        Returns:
+        --------
+        DataLoader
+            PyTorch DataLoader for the dataset.
+        """
+        dataset = TensorDataset(X, y)
+        loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+        return loader

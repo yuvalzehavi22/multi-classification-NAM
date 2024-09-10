@@ -9,9 +9,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import List, Any, Dict
+from torch.nn.utils import clip_grad_norm_
+from torch.optim.lr_scheduler import StepLR
 
 #from utils import define_device
-from training.trainer_utils import l1_penalty, l2_penalty, define_device
+from training.trainer_utils import l1_penalty, l2_penalty, penalized_mse
+from utils.utils import define_device
+from utils.model_parser import *
+
 
 class Trainer:
     """
@@ -25,44 +30,92 @@ class Trainer:
     optimizer : torch.optim.Optimizer
         Optimizer for training.
     
-    criterion : function
-        Loss function to be used during training.
-    
     lr_scheduler : torch.optim.lr_scheduler, optional
         Learning rate scheduler for training.
     
-    l1_lambda : float, optional
-        Strength of L1 regularization (default 0.0).
+    scheduler_params : dict
+        Scheduler parameters to be passed to the learning rate scheduler.
     
-    l2_lambda : float, optional
-        Strength of L2 regularization (default 0.0).
+    eval_metric : str
+        Metric used for evaluation (accuracy, F1-score, etc.).
+    
+    epochs : int
+        Number of training epochs.
+    
+    batch_size : int
+        Batch size for training.
+    
+    learning_rate : float
+        Initial learning rate for training.
+    
+    weight_decay : float
+        Weight decay (L2 regularization).
+    
+    l1_lambda_phase1 : float
+        Strength of L1 regularization for phase 1.
+    
+    l2_lambda_phase1 : float
+        Strength of L2 regularization for phase 1.
+    
+    l1_lambda_phase2 : float
+        Strength of L1 regularization for phase 2.
+    
+    l2_lambda_phase2 : float
+        Strength of L2 regularization for phase 2.
+    
+    eval_every : int
+        Evaluate the model every N epochs.
+    
+    early_stop_delta : float
+        Minimum change to qualify as an improvement for early stopping.
+    
+    early_stop_patience : int
+        Number of epochs with no improvement after which training will be stopped.
     """
     
     def __init__(self, 
-                 model, 
-                 optimizer: Any = torch.optim.Adam, 
+                 model,
+                 optimizer: str = 'Adam', 
                  loss_function: Any =None, 
                  lr_scheduler: Any =None, 
-                 device_name: str = "auto",
-                 l1_lambda_phase1: int = 0.,
-                 l1_lambda_phase2: int = 0.,
-                 l2_lambda_phase1: int = 0.,
-                 l2_lambda_phase2: int = 0.,
-                 **kwargs):
+                 scheduler_params: Dict = None,
+                 eval_metric: List = None, 
+                 epochs: int =100, 
+                 batch_size: int =32, 
+                 learning_rate: float =0.001, 
+                 weight_decay: float =0.0, 
+                 l1_lambda_phase1: float = 0.,
+                 l1_lambda_phase2: float = 0.,
+                 l2_lambda_phase1: float = 0.,
+                 l2_lambda_phase2: float = 0.,
+                 eval_every: int =1,
+                 early_stop_delta: float =0.001,
+                 early_stop_patience: int =10,
+                 clip_value: int =None,
+                 device_name: str ="auto"):
         
         self.model = model
-        self.optimizer = optimizer
-        self.lr_scheduler = lr_scheduler
-
-        # Defining device
-        self.device_name = device_name
-        self.device = torch.device(define_device(self.device_name))
-
+        self.optimizer = self._set_optimizer(optimizer, learning_rate, weight_decay)
+        self.lr_scheduler = self._set_lr_scheduler(self.optimizer, lr_scheduler, scheduler_params)
+        self.eval_metric = eval_metric
+        self.epochs = epochs
+        self.batch_size = batch_size
         # Regularization parameters
         self.l1_lambda_phase1 = l1_lambda_phase1
-        self.l1_lambda_phase2 = l1_lambda_phase2
         self.l2_lambda_phase1 = l2_lambda_phase1
+        self.l1_lambda_phase2 = l1_lambda_phase2
         self.l2_lambda_phase2 = l2_lambda_phase2
+        self.eval_every = eval_every
+        self.early_stop_delta = early_stop_delta
+        self.early_stop_patience = early_stop_patience
+        self.clip_value = clip_value
+
+        # Defining device
+        self.device = torch.device(define_device(device_name))
+
+        # Best validation loss for early stopping
+        self.best_val_loss = float('inf')
+        self.early_stop_counter = 0
 
         # Automatic loss function based on task type
         if loss_function is None:
@@ -79,7 +132,7 @@ class Trainer:
         else:
             self.criterion = loss_function
         
-    def train(self, loader, config):
+    def train(self, loader, val_loader=None):
         """
         Runs the training process.
         
@@ -88,21 +141,49 @@ class Trainer:
         loader : DataLoader
             DataLoader for the training set.
         
-        config : dict
-            Configuration parameters, including the number of epochs.
+        val_loader : DataLoader, optional
+            DataLoader for the validation set (for early stopping).
         """
-        loss_history = []
-        for epoch in tqdm(range(config['epochs'])):
+        train_loss_history = []
+        val_loss_history = []
+        for epoch in tqdm(range(self.epochs)):
             epoch_loss = self.train_epoch(loader)
-            loss_history.append(epoch_loss)
-
-            if epoch % 100 == 0:
-                print(f"Epoch {epoch} | Total Loss: {epoch_loss:.5f}")
-            
+            train_loss_history.append(epoch_loss)
+           
             if self.lr_scheduler:
                 self.lr_scheduler.step()
 
-        return loss_history
+            # Early Stopping Check
+            if val_loader:
+                val_loss = self.validate(val_loader)
+                val_loss_history.append(val_loss)
+                
+                if epoch % self.eval_every == 0:
+                    print(f"Epoch {epoch} | Total Loss: {epoch_loss:.5f} | Validation Loss: {val_loss:.5f}")
+                
+                if val_loss < self.best_val_loss - self.early_stop_delta:
+                    self.best_val_loss = val_loss
+                    self.early_stop_counter = 0
+                    self.save_model("best_model.pt")
+                else:
+                    self.early_stop_counter += 1
+                    if self.early_stop_counter >= self.early_stop_patience:
+                        print("Early stopping triggered!")
+                        break
+
+                # # Learning rate scheduler step (if using ReduceLROnPlateau, pass validation loss)
+                # if self.lr_scheduler:
+                #     if isinstance(self.lr_scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+                #         self.lr_scheduler.step(val_loss)
+                #     else:
+                #         self.lr_scheduler.step()
+            
+            else:
+                if epoch % self.eval_every == 0:
+                    print(f"Epoch {epoch} | Total Loss: {epoch_loss:.5f}")
+
+        return train_loss_history, val_loss_history
+    
 
     def train_epoch(self, loader):
         """
@@ -152,8 +233,12 @@ class Trainer:
         else:
             logits, phase1_gams_out = self.model(X)
             phase2_gams_out = None
-
-        loss = self.criterion(logits.view(-1), y.view(-1))
+        
+        old_way = True
+        if old_way:
+            loss = penalized_mse(logits, y)
+        else:
+            loss = self.criterion(logits.view(-1), y.view(-1))
 
         # Add L1 and L2 regularization for phase 1
         loss += l1_penalty(phase1_gams_out, self.l1_lambda_phase1)
@@ -167,6 +252,8 @@ class Trainer:
         # Backward pass and optimization step
         self.optimizer.zero_grad()
         loss.backward()
+        if self.clip_value:
+            clip_grad_norm_(self.model.parameters(), self.clip_value)
         self.optimizer.step()
 
         return loss.item()
@@ -191,263 +278,93 @@ class Trainer:
         with torch.no_grad():
             for X, y in val_loader:
                 X, y = X.to(self.device), y.to(self.device)
-                logits, fnns_out = self.model(X)
-                val_loss += self.criterion(logits, y, fnns_out)
+                if self.model.hierarch_net:
+                    logits, _, _ = self.model(X)
+                else:
+                    logits, _ = self.model(X)
+
+                val_loss += self.criterion(logits.view(-1), y.view(-1))
+            
+            avg_val_loss = val_loss / len(val_loader)
         
-        return val_loss / len(val_loader)
+        return avg_val_loss
 
 
-
-# class Trainer(nn.Module):
-
-#     def __init__(self,
-#                 model, 
-#                 experiment_name=None, 
-#                 warm_start=False,
-#                 Optimizer=torch.optim.Adam, 
-#                 optimizer_params={},
-#                 lr=0.01, 
-#                 lr_warmup_steps=-1, 
-#                 l1_lambda_phase1 = 0.,
-#                 l1_lambda_phase2 = 0.,
-#                 l2_lambda_phase1 = 0.,
-#                 l2_lambda_phase2 = 0.,
-#                 verbose=False,
-#                 n_last_checkpoints=5, 
-#                 step_callbacks=[],
-#                 **kwargs
-#                 ):
-          
-#         """
-#         Args:
-#             model (torch.nn.Module): the model.
-#             experiment_name: a path where all logs and checkpoints are saved.
-#             warm_start: when set to True, loads the last checkpoint.
-#             Optimizer: function(parameters) -> optimizer. Default: torch.optim.Adam.
-#             optimizer_params: parameter when intializing optimizer. Usage:
-#                 Optimizer(**optimizer_params).
-#             verbose: when set to True, produces logging information.
-#             n_last_checkpoints: the last few checkpoints to do model averaging.
-#             step_callbacks: function(step). Will be called after each optimization step.
-#         """
-#         super().__init__()
+    def _set_optimizer(self, name, lr, wd):
+        """
+        Setup optimizer
         
-#         self.model = model
-#         self.verbose = verbose
-#         self.lr = lr
-#         self.lr_warmup_steps = lr_warmup_steps
-
-#         # Regularization parameters
-#         self.l1_lambda_phase1 = l1_lambda_phase1,
-#         self.l1_lambda_phase2 = l1_lambda_phase2,
-#         self.l2_lambda_phase1 = l2_lambda_phase1,
-#         self.l2_lambda_phase2 = l2_lambda_phase2,
+        Parameters:
+        -----------
+        name : Optimizer name
+        lr : larning rate
+        wd : Wigth decay
         
-#         params = [p for p in self.model.parameters() if p.requires_grad]
+        Returns:
+        --------
+        optimizer function
+        """
+        if name == 'Adam':
+            optimizer = torch.optim.Adam(self.model.parameters(),
+                                 lr=lr,
+                                 weight_decay=wd,
+                                )
+        elif name == 'AdamW':
+            optimizer = torch.optim.AdamW(self.model.parameters(),
+                                 lr=lr,
+                                 weight_decay=wd,
+                                )
+        return optimizer
+    
+
+    def _set_lr_scheduler(self, optimizer, lr_scheduler_type, scheduler_params):
+        """
+        Setup lr_scheduler
         
-#         self.opt = Optimizer(params, lr=lr, **optimizer_params)
-#         self.step = 0
-#         self.n_last_checkpoints = n_last_checkpoints
-#         self.step_callbacks = step_callbacks
+        Parameters:
+        -----------
+        lr_scheduler_type : lr_scheduler name
+        scheduler_params : 
         
-#         if self.model.task_type == 'binary_classification':
-#             self.criterion = F.binary_cross_entropy_with_logits()
-#         elif self.model.task_type == 'multi_classification':
-#             self.criterion = F.cross_entropy()
-#         elif self.model.task_type == 'regression':
-#             self.criterion = F.mse_loss()
-#         else:
-#             raise NotImplementedError()
+        Returns:
+        --------
+        lr_scheduler function
+        """
+        if lr_scheduler_type == 'StepLR':
+            lr_scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
+
+        # elif lr_scheduler_type == 'ReduceLROnPlateau':
+
+        # elif lr_scheduler_type == 'CyclicLR':
+
+        # elif lr_scheduler_type == 'OneCycleLR':
+
+        elif lr_scheduler_type == 'NoScheduler':
+            lr_scheduler = None
+
+        return lr_scheduler
+
+    def save_model(self, path):
+        """
+        Save the model state to a file.
         
-#         if experiment_name is None:
-#             experiment_name = 'untitled_{}.{:0>2d}.{:0>2d}_{:0>2d}:{:0>2d}'.format(*time.gmtime()[:5])
-#             if self.verbose:
-#                 print('using automatic experiment name: ' + experiment_name)
+        Parameters:
+        -----------
+        path : str
+            File path to save the model.
+        """
+        torch.save(self.model.state_dict(), path)
+        #print(f"Model saved to {path}")
+
+    def load_model(self, path):
+        """
+        Load the model state from a file.
         
-#         self.experiment_path = pjoin('logs/', experiment_name)
-        
-#         if warm_start:
-#             self.load_checkpoint()
-
-
-#     def fit(
-#         self,
-#         X_train,
-#         y_train,
-#         eval_set=None,
-#         eval_name=None,
-#         eval_metric=None,
-#         loss_fn=None,
-#         weights=0,
-#         max_epochs=100,
-#         patience=10,
-#         batch_size=1024,
-#         virtual_batch_size=128,
-#         num_workers=0,
-#         drop_last=True,
-#         callbacks=None,
-#         pin_memory=True,
-#         from_unsupervised=None,
-#         warm_start=False,
-#         augmentations=None,
-#         compute_importance=True
-#     ):
-#         """Train a neural network stored in self.network
-#         Using train_dataloader for training data and
-#         valid_dataloader for validation.
-
-#         Parameters
-#         ----------
-#         X_train : np.ndarray
-#             Train set
-#         y_train : np.array
-#             Train targets
-#         eval_set : list of tuple
-#             List of eval tuple set (X, y).
-#             The last one is used for early stopping
-#         eval_name : list of str
-#             List of eval set names.
-#         eval_metric : list of str
-#             List of evaluation metrics.
-#             The last metric is used for early stopping.
-#         loss_fn : callable or None
-#             a PyTorch loss function
-#         weights : bool or dictionnary
-#             0 for no balancing
-#             1 for automated balancing
-#             dict for custom weights per class
-#         max_epochs : int
-#             Maximum number of epochs during training
-#         patience : int
-#             Number of consecutive non improving epoch before early stopping
-#         batch_size : int
-#             Training batch size
-#         virtual_batch_size : int
-#             Batch size for Ghost Batch Normalization (virtual_batch_size < batch_size)
-#         num_workers : int
-#             Number of workers used in torch.utils.data.DataLoader
-#         drop_last : bool
-#             Whether to drop last batch during training
-#         warm_start: bool
-#             If True, current model parameters are used to start training
-#         """
-#         # update model name
-
-#         self.max_epochs = max_epochs
-#         self.patience = patience
-#         self.batch_size = batch_size
-#         self.virtual_batch_size = virtual_batch_size
-#         self.num_workers = num_workers
-#         self.drop_last = drop_last
-#         self.input_dim = X_train.shape[1]
-#         self._stop_training = False
-#         self.pin_memory = pin_memory and (self.device.type != "cpu")
-        
-#         eval_set = eval_set if eval_set else []
-
-#         if loss_fn is None:
-#             self.loss_fn = self._default_loss
-#         else:
-#             self.loss_fn = loss_fn
-
-#         check_input(X_train)
-#         check_warm_start(warm_start, from_unsupervised)
-
-#         self.update_fit_params(
-#             X_train,
-#             y_train,
-#             eval_set,
-#             weights,
-#         )
-
-#         # Validate and reformat eval set depending on training data
-#         eval_names, eval_set = validate_eval_set(eval_set, eval_name, X_train, y_train)
-
-#         train_dataloader, valid_dataloaders = self._construct_loaders(
-#             X_train, y_train, eval_set
-#         )
-
-#         if from_unsupervised is not None:
-#             # Update parameters to match self pretraining
-#             self.__update__(**from_unsupervised.get_params())
-
-#         if not hasattr(self, "network") or not warm_start:
-#             # model has never been fitted before of warm_start is False
-#             self._set_network()
-#         self._update_network_params()
-#         self._set_metrics(eval_metric, eval_names)
-#         self._set_optimizer()
-#         self._set_callbacks(callbacks)
-
-#         if from_unsupervised is not None:
-#             self.load_weights_from_unsupervised(from_unsupervised)
-#             warnings.warn("Loading weights from unsupervised pretraining")
-#         # Call method on_train_begin for all callbacks
-#         self._callback_container.on_train_begin()
-
-#         # Training loop over epochs
-#         for epoch_idx in range(self.max_epochs):
-
-#             # Call method on_epoch_begin for all callbacks
-#             self._callback_container.on_epoch_begin(epoch_idx)
-
-#             self._train_epoch(train_dataloader)
-
-#             # Apply predict epoch to all eval sets
-#             for eval_name, valid_dataloader in zip(eval_names, valid_dataloaders):
-#                 self._predict_epoch(eval_name, valid_dataloader)
-
-#             # Call method on_epoch_end for all callbacks
-#             self._callback_container.on_epoch_end(
-#                 epoch_idx, logs=self.history.epoch_metrics
-#             )
-
-#             if self._stop_training:
-#                 break
-
-#         # Call method on_train_end for all callbacks
-#         self._callback_container.on_train_end()
-#         self.network.eval()
-
-#         if self.compute_importance:
-#             # compute feature importance once the best model is defined
-#             self.feature_importances_ = self._compute_feature_importances(X_train)
-
-#     def predict(self, X):
-#         """
-#         Make predictions on a batch (valid)
-
-#         Parameters
-#         ----------
-#         X : a :tensor: `torch.Tensor` or matrix: `scipy.sparse.csr_matrix`
-#             Input data
-
-#         Returns
-#         -------
-#         predictions : np.array
-#             Predictions of the regression problem
-#         """
-#         self.network.eval()
-
-#         if scipy.sparse.issparse(X):
-#             dataloader = DataLoader(
-#                 SparsePredictDataset(X),
-#                 batch_size=self.batch_size,
-#                 shuffle=False,
-#             )
-#         else:
-#             dataloader = DataLoader(
-#                 PredictDataset(X),
-#                 batch_size=self.batch_size,
-#                 shuffle=False,
-#             )
-
-#         results = []
-#         for batch_nb, data in enumerate(dataloader):
-#             data = data.to(self.device).float()
-#             output, M_loss = self.network(data)
-#             predictions = output.cpu().detach().numpy()
-#             results.append(predictions)
-#         res = np.vstack(results)
-#         return self.predict_func(res)
-
+        Parameters:
+        -----------
+        path : str
+            File path to load the model from.
+        """
+        self.model.load_state_dict(torch.load(path))
+        self.model.to(self.device)
+        print(f"Model loaded from {path}")

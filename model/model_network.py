@@ -517,7 +517,7 @@ class HierarchNeuralAdditiveModel(torch.nn.Module):
         latent_outputs, phase1_gams_out = self.NAM_features(x)
         if not self.hierarch_net:
             if self.final_activation:
-                outputs = self.activation(latent_outputs)
+                outputs = self.final_activation(latent_outputs)
             return outputs, phase1_gams_out
         
         else:
@@ -527,7 +527,7 @@ class HierarchNeuralAdditiveModel(torch.nn.Module):
     #         outputs = torch.softmax(outputs, dim=-1)
             # Apply activation based on the task
             if self.final_activation:
-                outputs = self.activation(outputs)
+                outputs = self.final_activation(outputs)
 
             if 0:
                 print('x:', x.shape)

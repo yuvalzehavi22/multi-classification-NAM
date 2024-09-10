@@ -7,34 +7,11 @@ from sklearn.model_selection import train_test_split
 import torch.nn.functional as F
 from typing import List, Any, Dict, Optional
 
-def define_device(device_name):
-    """
-    Define the device to use during training and inference.
-    If auto it will detect automatically whether to use cuda or cpu
-
-    Parameters
-    ----------
-    device_name : str
-        Either "auto", "cpu" or "cuda"
-
-    Returns
-    -------
-    str
-        Either "cpu" or "cuda"
-    """
-    if device_name == "auto":
-        if torch.cuda.is_available():
-            return "cuda"
-        else:
-            return "cpu"
-    elif device_name == "cuda" and not torch.cuda.is_available():
-        return "cpu"
-    else:
-        return device_name
-
 
 def l2_penalty(params, l2_lambda =0.):
-    return l2_lambda * (params ** 2).sum() / params.shape[1]
+    l2_penalty_val = l2_lambda * (params ** 2).sum() / params.shape[1]
+    #print(l2_penalty_val)
+    return l2_penalty_val
 
 def l1_penalty(params, l1_lambda):
     l1_norm =  torch.stack([torch.linalg.norm(p, 1) for p in params], dim=0).sum()
@@ -48,6 +25,11 @@ def penalized_cross_entropy(logits, truth, fnn_out, feature_penalty=0.):
 
 def penalized_mse(logits, truth, fnn_out, feature_penalty=0.):
     return F.mse_loss(logits.view(-1), truth.view(-1)) + l2_penalty(fnn_out, feature_penalty)
+
+def penalized_mse(logits, truth):
+    loss = F.mse_loss(logits.view(-1), truth.view(-1))
+    #print(loss)
+    return loss
 
 # def get_loss_function(task_type):
 #     """

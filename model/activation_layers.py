@@ -27,7 +27,7 @@ class ActivationLayer(torch.nn.Module):
         super().__init__()
         
         self.weight = torch.nn.Parameter(torch.empty((in_features, out_features)))
-        self.bias = torch.nn.Parameter(torch.empty(in_features)) #before it was in_features - understand why!
+        self.bias = torch.nn.Parameter(torch.empty(in_features))
 
     def forward(self, x):
         raise NotImplementedError("abstract method called")

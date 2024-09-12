@@ -49,12 +49,16 @@ def main():
         # Create DataLoaders
         train_loader, val_loader = dataloader_wrapper.create_dataloaders()
 
-    # Print the size of training and validation datasets
+    
     print("Train size:", len(train_loader.dataset), "Val size:", len(val_loader.dataset))
 
     # # Get default architectures for both phases - block_layers_type options: ReLU, shallow_ExU, Monotonic, ExU_ReLU
     # get_defult_architecture_phase1(args, block_layers_type=args.GAM_block_layers_type_phase1)
     # get_defult_architecture_phase2(args, block_layers_type=args.GAM_block_layers_type_phase2)
+
+    print("Training Hierarchical NAM...")
+    print(f"Phase1 architecture: [{args.first_activate_layer_phase1}: {args.first_hidden_dim_phase1}, {args.hidden_activate_layer_phase1}: {args.hidden_dim_phase1}]")
+    print(f"Phase2 architecture: [{args.first_activate_layer_phase2}: {args.first_hidden_dim_phase2}, {args.hidden_activate_layer_phase2}: {args.hidden_dim_phase2}]")
 
     # Model definition: HierarchNeuralAdditiveModel
     hirarch_nam = HierarchNeuralAdditiveModel(num_inputs=args.in_features,

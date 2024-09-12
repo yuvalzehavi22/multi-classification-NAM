@@ -16,12 +16,12 @@ def parse_args():
             hierarch_net=True,
             GAM_block_layers_type_phase1="ReLU",
             GAM_block_layers_type_phase2="ReLU",
-            featureNN_arch_phase1="single_to_multi_output",
-            featureNN_arch_phase2="parallel_single_output",
+            featureNN_arch_phase1="multi_output",
+            featureNN_arch_phase2="multi_output",
             first_activate_layer_phase1="ReLU",
             first_activate_layer_phase2="LipschitzMonotonic",
             first_hidden_dim_phase1=64,
-            first_hidden_dim_phase2=64,
+            first_hidden_dim_phase2=128,
             shallow_phase1=False,
             shallow_phase2=False,
             hidden_activate_layer_phase1="ReLU",
@@ -44,10 +44,10 @@ def parse_args():
             weight_decay=0.0001,
             clip_value=0,
             l2_lambda_phase1=0.0,
-            l2_lambda_phase2=0.0,
+            l2_lambda_phase2=0.0002,
             l1_lambda_phase1=0.0,
             l1_lambda_phase2=0.0,
-            eval_every=1,
+            eval_every=100,
             early_stop_delta=0.0,
             early_stop_patience=30,
             monitor="val_loss",
@@ -88,17 +88,17 @@ def parse_args():
         parser.add_argument('--task_type', type=str, default='regression', help="The type of task. Options: 'regression', 'binary_classification', 'multi_classification'")
         parser.add_argument('--hierarch_net', type=bool, default=True, help='Boolean var that determines whether the hierarchical net is used (adding phase2)')
         parser.add_argument('--GAM_block_layers_type_phase1', type=str, default='ReLU', help='options: ReLU, shallow_ExU, Monotonic, ExU_ReLU')
-        parser.add_argument('--GAM_block_layers_type_phase2', type=str, default='ReLU', help='options: ReLU, shallow_ExU, Monotonic, ExU_ReLU')
+        parser.add_argument('--GAM_block_layers_type_phase2', type=str, default='Monotonic', help='options: ReLU, shallow_ExU, Monotonic, ExU_ReLU')
 
         parser.add_argument(
             "--featureNN_arch_phase1", 
             type=str, 
-            default="single_to_multi_output", 
+            default="multi_output", 
             help="one of 'multi_output', 'single_to_multi_output' or 'parallel_single_output'")
         parser.add_argument(
             "--featureNN_arch_phase2", 
             type=str, 
-            default="parallel_single_output", 
+            default="multi_output", 
             help="one of 'multi_output', 'single_to_multi_output' or 'parallel_single_output'")
         # Networks parameter
         parser.add_argument(
@@ -110,7 +110,7 @@ def parse_args():
         parser.add_argument(
             '--first_activate_layer_phase2', 
             type=str, 
-            default=None, 
+            default='LipschitzMonotonic', 
             help='First activation layer for phase2 (optional). options: ReLU, ExU, LipschitzMonotonic'
         )
         parser.add_argument(
@@ -122,7 +122,7 @@ def parse_args():
         parser.add_argument(
             '--first_hidden_dim_phase2', 
             type=int, 
-            default=64, 
+            default=128, 
             help='Number of hidden units in the first hidden layer for phase2'
         )
         parser.add_argument(
@@ -147,7 +147,7 @@ def parse_args():
         parser.add_argument(
             '--hidden_activate_layer_phase2', 
             type=str, 
-            default=None, 
+            default='LipschitzMonotonic', 
             help='Hidden activation layer for phase2 (optional). options: ReLU, ExU, LipschitzMonotonic'
         )
         parser.add_argument(
@@ -211,15 +211,15 @@ def parse_args():
         parser.add_argument("--l1_lambda_phase2",type=float, default=0.0, help="l1 regularization for the gams outputs of phase2")
         #parser.add_argument("--output_regularization",type=float, default=0.0, help="feature regularization")
         #parser.add_argument("--l2_regularization",type=float, default=0.0, help="l2 weight decay")
-        parser.add_argument('--eval_every', type=int, default=1, help='Evaluate every N epochs')
+        parser.add_argument('--eval_every', type=int, default=1, help='Evaluate ever y N epochs')
         parser.add_argument('--early_stop_delta', type=float, default=0.0, help='Min delta for early stopping')
         parser.add_argument('--early_stop_patience', type=int, default=30, help='Patience for early stopping')
-        parser.add_argument(
-            "--monitor",
-            type=str,
-            default="val_loss",
-            help="(val_)loss or (val_)metric name to monitor",
-        )
+        # parser.add_argument(
+        #     "--monitor",
+        #     type=str,
+        #     default="val_loss",
+        #     help="(val_)loss or (val_)metric name to monitor",
+        # )
 
         # --------------------------------------------------------------------
         # ----------------------- Optimizer parameters -----------------------

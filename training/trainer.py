@@ -88,7 +88,7 @@ class Trainer:
                  l1_lambda_phase2: float = 0.,
                  l2_lambda_phase1: float = 0.,
                  l2_lambda_phase2: float = 0.,
-                 eval_every: int =1,
+                 eval_every: int = 1,
                  early_stop_delta: float =0.001,
                  early_stop_patience: int =10,
                  clip_value: int =None,
@@ -234,19 +234,19 @@ class Trainer:
             logits, phase1_gams_out = self.model(X)
             phase2_gams_out = None
         
-        old_way = True
-        if old_way:
-            loss = penalized_mse(logits, y)
-        else:
-            loss = self.criterion(logits.view(-1), y.view(-1))
+        # old_way = True
+        # if old_way:
+        #     loss = penalized_mse(logits, y)
+        # else:
+        loss = self.criterion(logits.view(-1), y.view(-1))
 
         # Add L1 and L2 regularization for phase 1
-        loss += l1_penalty(phase1_gams_out, self.l1_lambda_phase1)
+        #loss += l1_penalty(phase1_gams_out, self.l1_lambda_phase1)
         loss += l2_penalty(phase1_gams_out, self.l2_lambda_phase1)
 
         # Add L1 and L2 regularization for phase 2 if applicable
         if phase2_gams_out is not None:
-            loss += l1_penalty(phase2_gams_out, self.l1_lambda_phase2)
+            #loss += l1_penalty(phase2_gams_out, self.l1_lambda_phase2)
             loss += l2_penalty(phase2_gams_out, self.l2_lambda_phase2)
 
         # Backward pass and optimization step

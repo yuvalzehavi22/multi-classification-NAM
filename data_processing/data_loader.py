@@ -183,11 +183,11 @@ class SyntheticDatasetGenerator:
             Generated target values for Phase 2.
         """
         # creating y_1
-        y_1 = 4 * X_input[:, 0] + 0.5 * X_input[:, 1]
+        y_1 = - X_input[:, 0] - 2*X_input[:, 2]
         y_1 = y_1.reshape(-1, 1)
         
         # creating y_2
-        y_2 = 5 * X_input[:, 3]
+        y_2 = 3*X_input[:, 1]
         y_2 = y_2.reshape(-1, 1)
         
         # Stack all y_i to form the final target matrix

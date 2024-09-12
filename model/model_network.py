@@ -368,9 +368,6 @@ class NeuralAdditiveModel(torch.nn.Module):
 
         outputs = f_out.sum(axis=-1) + self.bias #if I want positive bias: F.relu(self.bias)
         
-        if 0:
-            print('final output', outputs)
-            print('f_out', f_out)
         return outputs, f_out
 
     def _feature_nns(self, x):
@@ -516,24 +513,18 @@ class HierarchNeuralAdditiveModel(torch.nn.Module):
     def forward(self, x):
         latent_outputs, phase1_gams_out = self.NAM_features(x)
         if not self.hierarch_net:
+            # Apply activation based on the task
             if self.final_activation:
                 outputs = self.final_activation(latent_outputs)
+            else:
+                outputs = latent_outputs
+                
             return outputs, phase1_gams_out
         
         else:
             outputs, phase2_gams_out = self.NAM_output(latent_outputs)
-        
-            # Apply softmax to get class probabilities
-    #         outputs = torch.softmax(outputs, dim=-1)
             # Apply activation based on the task
             if self.final_activation:
                 outputs = self.final_activation(outputs)
 
-            if 0:
-                print('x:', x.shape)
-                print('latent_outputs:',latent_outputs.shape)
-                print('f_out:',phase1_gams_out.shape)
-                print('outputs:',outputs.shape)
-                print('lat_f_out:',phase2_gams_out.shape)  
-                
             return outputs, phase1_gams_out, phase2_gams_out

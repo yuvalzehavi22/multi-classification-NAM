@@ -124,4 +124,5 @@ if __name__ == "__main__":
                         
 
 
-#python run_model.py --seed 42 --optimizer "Adam" --epochs 100 --batch_size 1024 --learning_rate 0.0035 --weight_decay 0.0001 --eval_every 100 --first_hidden_dim_phase1 64 --hidden_dim_phase1 64 32 --first_activate_layer_phase1 "ReLU" --hidden_activate_layer_phase1 "ReLU" --first_hidden_dim_phase2 128 --hidden_dim_phase2 128 64 --first_activate_layer_phase2 "LipschitzMonotonic" --hidden_activate_layer_phase2 "LipschitzMonotonic"
+#python run_model.py --seed 42 --eval_every 100 --featureNN_arch_phase1 'single_to_multi_output' --featureNN_arch_phase2 'parallel_single_output' --learning_rate 0.001
+# --optimizer "Adam" --epochs 100 --batch_size 1024 --learning_rate 0.0035 --weight_decay 0.0001 --first_hidden_dim_phase1 64 --hidden_dim_phase1 64 32 --first_activate_layer_phase1 "ReLU" --hidden_activate_layer_phase1 "ReLU" --first_hidden_dim_phase2 128 --hidden_dim_phase2 128 64 --first_activate_layer_phase2 "LipschitzMonotonic" --hidden_activate_layer_phase2 "LipschitzMonotonic"

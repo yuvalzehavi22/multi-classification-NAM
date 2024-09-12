@@ -5,6 +5,11 @@ import torch.nn.functional as F
 
 
 def visualize_gam(model, x_values, input_dim, output_dim, vis_lat_features = False):
+    model.eval()  # Set model to evaluation mode
+    device = next(model.parameters()).device  # Get the device model is on
+
+    x_values = x_values.to(device)
+    
     # Plot learned functions
     fig, axes = plt.subplots(input_dim, output_dim, figsize=(15,30))
 

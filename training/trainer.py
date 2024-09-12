@@ -234,10 +234,6 @@ class Trainer:
             logits, phase1_gams_out = self.model(X)
             phase2_gams_out = None
         
-        # old_way = True
-        # if old_way:
-        #     loss = penalized_mse(logits, y)
-        # else:
         loss = self.criterion(logits.view(-1), y.view(-1))
 
         # Add L1 and L2 regularization for phase 1
@@ -288,7 +284,6 @@ class Trainer:
             avg_val_loss = val_loss / len(val_loader)
         
         return avg_val_loss
-
 
     def _set_optimizer(self, name, lr, wd):
         """

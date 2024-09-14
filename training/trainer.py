@@ -3,6 +3,7 @@ import os
 import time
 from collections import OrderedDict
 from os.path import join as pjoin, exists as pexists
+from matplotlib.path import Path
 from tqdm import tqdm
 import numpy as np
 import torch
@@ -11,6 +12,7 @@ import torch.nn.functional as F
 from typing import List, Any, Dict
 from torch.nn.utils import clip_grad_norm_
 from torch.optim.lr_scheduler import StepLR
+import wandb
 
 #from utils import define_device
 from training.trainer_utils import l1_penalty, l2_penalty, penalized_mse
@@ -132,7 +134,7 @@ class Trainer:
         else:
             self.criterion = loss_function
         
-    def train(self, loader, val_loader=None):
+    def train(self, args, loader, val_loader=None):
         """
         Runs the training process.
         
@@ -144,27 +146,33 @@ class Trainer:
         val_loader : DataLoader, optional
             DataLoader for the validation set (for early stopping).
         """
+        # Initialize W&B run and log the parameters
+        wandb.init(project="Hirarchial GAMs", config=args)
+
         train_loss_history = []
         val_loss_history = []
         for epoch in tqdm(range(self.epochs)):
             epoch_loss = self.train_epoch(loader)
-            train_loss_history.append(epoch_loss)
+            train_loss_history.append(epoch_loss)  
            
             if self.lr_scheduler:
                 self.lr_scheduler.step()
 
             # Early Stopping Check
             if val_loader:
-                val_loss = self.validate(val_loader)
+                val_loss, rmse = self.validate(val_loader)
                 val_loss_history.append(val_loss)
                 
                 if epoch % self.eval_every == 0:
                     print(f"Epoch {epoch} | Total Loss: {epoch_loss:.5f} | Validation Loss: {val_loss:.5f}")
-                
+                    # Log metrics to W&B
+                    wandb.log({"Epoch": epoch, "Training loss": epoch_loss, "Validation Loss": val_loss, "Validation RMSE": rmse})
+
                 if val_loss < self.best_val_loss - self.early_stop_delta:
                     self.best_val_loss = val_loss
                     self.early_stop_counter = 0
-                    self.save_model("best_model.pt")
+                    self.save_model("best_model.pth")
+                    wandb.save(f"model_epoch_{epoch}.pth")
                 else:
                     self.early_stop_counter += 1
                     if self.early_stop_counter >= self.early_stop_patience:
@@ -181,6 +189,8 @@ class Trainer:
             else:
                 if epoch % self.eval_every == 0:
                     print(f"Epoch {epoch} | Total Loss: {epoch_loss:.5f}")
+                    # Log metrics to W&B
+                    wandb.log({"Epoch": epoch, "Training loss": epoch_loss})
 
         return train_loss_history, val_loss_history
     
@@ -270,7 +280,11 @@ class Trainer:
         """
         self.model.eval()
         val_loss = 0.0
-        
+        rmse = 0.0
+
+        list_y_true = []
+        list_y_pred = []
+
         with torch.no_grad():
             for X, y in val_loader:
                 X, y = X.to(self.device), y.to(self.device)
@@ -279,11 +293,24 @@ class Trainer:
                 else:
                     logits, _ = self.model(X)
 
+                # Calculate loss
                 val_loss += self.criterion(logits.view(-1), y.view(-1))
-            
+
+                # Store predictions and ground truths for later metrics calculation
+                list_y_true.append(y.cpu())
+                list_y_pred.append(logits.cpu())
+
+            # Concatenate all predictions and true labels
+            y_true = torch.cat(list_y_true)
+            y_pred = torch.cat(list_y_pred)
+
+            # Calculate overall RMSE on the entire validation set
+            rmse = torch.sqrt(torch.mean((y_pred - y_true) ** 2)).item()
+
+            # Average validation loss over the number of batches
             avg_val_loss = val_loss / len(val_loader)
         
-        return avg_val_loss
+        return avg_val_loss, rmse
 
     def _set_optimizer(self, name, lr, wd):
         """

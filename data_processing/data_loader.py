@@ -118,7 +118,7 @@ class SyntheticDatasetGenerator:
     """
 
     @staticmethod
-    def get_synthetic_data_phase1(num_exp=10, in_features=10):
+    def get_synthetic_data_phase1(num_exp=10, in_features=10, is_test=False):
         """
         Generate synthetic data for Phase 1.
         
@@ -130,6 +130,9 @@ class SyntheticDatasetGenerator:
         in_features : int
             Number of input features.
 
+        is_test : bool
+            generate data for testing the results
+
         Returns:
         --------
         X : torch.Tensor
@@ -139,7 +142,11 @@ class SyntheticDatasetGenerator:
             Generated target values.
         """
         # Simulate independent variables, x0,...,xn from a Uniform distribution on [0, 3]
-        X = Uniform(0, 3).sample((num_exp, in_features))
+        if is_test:
+            x_values = torch.linspace(0, 3, num_exp).reshape(-1, 1)  # 100 points between -1 and 1
+            X = x_values.repeat(1, in_features)
+        else:
+            X = Uniform(0, 3).sample((num_exp, in_features))
         print(X.shape)
         
         # creating y_1

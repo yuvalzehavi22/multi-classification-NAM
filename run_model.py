@@ -11,6 +11,7 @@ import logging
 from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
 from torch.optim.lr_scheduler import StepLR
+import wandb
 
 from data_processing.data_loader import *
 from model.activation_layers import ExULayer, ReLULayer, LipschitzMonotonicLayer
@@ -116,7 +117,7 @@ def main():
     )
 
     # Run the training phase
-    train_loss_history, val_loss_history = trainer.train(train_loader, val_loader)
+    train_loss_history, val_loss_history = trainer.train(args, train_loader, val_loader)
 
 
 if __name__ == "__main__":

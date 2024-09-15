@@ -26,3 +26,8 @@ config: {'seed': 42, 'num_exp': 50000, 'in_features': 10, 'latent_dim': 4, 'outp
 2024-09-14 17:23:41,134 INFO    MainThread:2397581 [wandb_run.py:_redirect():2376] Wrapping output streams.
 2024-09-14 17:23:41,134 INFO    MainThread:2397581 [wandb_run.py:_redirect():2401] Redirects installed.
 2024-09-14 17:23:41,138 INFO    MainThread:2397581 [wandb_init.py:init():895] run started, returning control to user process
+2024-09-14 18:54:25,650 INFO    MainThread:2397581 [jupyter.py:save_ipynb():372] not saving jupyter notebook
+2024-09-14 18:54:25,650 INFO    MainThread:2397581 [wandb_init.py:_pause_backend():435] pausing backend
+2024-09-14 18:54:25,719 INFO    MainThread:2397581 [wandb_init.py:_resume_backend():440] resuming backend
+2024-09-14 18:54:30,943 INFO    MainThread:2397581 [jupyter.py:save_ipynb():372] not saving jupyter notebook
+2024-09-14 18:54:30,943 INFO    MainThread:2397581 [wandb_init.py:_pause_backend():435] pausing backend

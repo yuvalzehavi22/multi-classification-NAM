@@ -193,8 +193,18 @@ def parse_args():
         parser.add_argument('--weight_norms_kind_phase2', type=str, default='one-inf', help='From EXPRESSIVE MONOTONIC NEURAL NETWORKS')
         parser.add_argument('--group_size_phase1', type=int, default=2, help='From EXPRESSIVE MONOTONIC NEURAL NETWORKS')
         parser.add_argument('--group_size_phase2', type=int, default=2, help='From EXPRESSIVE MONOTONIC NEURAL NETWORKS')
-        parser.add_argument('--monotonic_constraint_phase1', type=int, default=None, help='From EXPRESSIVE MONOTONIC NEURAL NETWORKS')
-        parser.add_argument('--monotonic_constraint_phase2', type=int, default=None, help='From EXPRESSIVE MONOTONIC NEURAL NETWORKS')
+        parser.add_argument(
+            '--monotonic_constraint_phase1', 
+            type=int, 
+            nargs='+',
+            default=None, 
+            help='From EXPRESSIVE MONOTONIC NEURAL NETWORKS')
+        parser.add_argument(
+            '--monotonic_constraint_phase2', 
+            type=int, 
+            nargs='+',
+            default=None,
+            help='From EXPRESSIVE MONOTONIC NEURAL NETWORKS')
 
         # ---------------------------------------------------------------------
         # ----------------------- train/eval parameters -----------------------
@@ -209,11 +219,12 @@ def parse_args():
         parser.add_argument("--l2_lambda_phase2",type=float, default=0.0, help="l2 regularization for the gams outputs of phase2")
         parser.add_argument("--l1_lambda_phase1",type=float, default=0.0, help="l1 regularization for the gams outputs of phase1")
         parser.add_argument("--l1_lambda_phase2",type=float, default=0.0, help="l1 regularization for the gams outputs of phase2")
+        parser.add_argument("--monotonicity_lambda",type=float, default=0.0, help="Parameter to controls the strength of the monotonicity constraint")
         #parser.add_argument("--output_regularization",type=float, default=0.0, help="feature regularization")
         #parser.add_argument("--l2_regularization",type=float, default=0.0, help="l2 weight decay")
         parser.add_argument('--eval_every', type=int, default=1, help='Evaluate ever y N epochs')
         parser.add_argument('--early_stop_delta', type=float, default=0.0, help='Min delta for early stopping')
-        parser.add_argument('--early_stop_patience', type=int, default=30, help='Patience for early stopping')
+        parser.add_argument('--early_stop_patience', type=int, default=200, help='Patience for early stopping')
         # parser.add_argument(
         #     "--monitor",
         #     type=str,

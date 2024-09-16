@@ -8,32 +8,41 @@ from sklearn.model_selection import train_test_split
 import torch.nn.functional as F
 from typing import List, Any, Dict, Optional
 
+from training.monotonic_constraints import MonotonicityEnforcer
+
 
 def l2_penalty(params, l2_lambda =0.):
     l2_penalty_val = l2_lambda * (params ** 2).sum() / params.shape[1]
     #print(l2_penalty_val)
     return l2_penalty_val
 
-def l1_penalty(params, l1_lambda):
-    l1_norm =  torch.stack([torch.linalg.norm(p, 1) for p in params], dim=0).sum()
-    return l1_lambda*l1_norm
+# def l1_penalty(model, l1_lambda = 0.):
+#     # Add scaled L1 regularization term (normalized by the number of parameters)
+#     total_params = sum(p.numel() for p in model.parameters())
+#     l1_norm = sum(p.abs().sum() for p in model.parameters())
 
-def penalized_binary_cross_entropy(logits, truth, fnn_out, feature_penalty=0.):
-    return F.binary_cross_entropy_with_logits(logits.view(-1), truth.view(-1)) + l2_penalty(fnn_out, feature_penalty)
+#     # Monitor sparsity level
+#     # zero_params = sum((p == 0).sum().item() for p in model.parameters())
+#     # sparsity = zero_params / total_params * 100
+#     # print(f"Sparsity: {sparsity:.2f}% of parameters are zero")
 
-def penalized_cross_entropy(logits, truth, fnn_out, feature_penalty=0.):
-    return F.cross_entropy(logits.view(-1), truth.view(-1)) + l2_penalty(fnn_out, feature_penalty)
+#     return (l1_lambda / total_params) * l1_norm
 
-def penalized_mse(logits, truth, fnn_out, feature_penalty=0.):
-    return F.mse_loss(logits.view(-1), truth.view(-1)) + l2_penalty(fnn_out, feature_penalty)
+def l1_penalty(params, l1_lambda = 0.):
+    l1_norm = sum(p.abs().sum() for p in params)
+    l1_penalty_val = l1_lambda*l1_norm
+    return l1_penalty_val
 
-def penalized_mse(logits, truth):
-    loss = F.mse_loss(logits.view(-1), truth.view(-1))
-    #print(loss)
-    return loss
+def monotonic_penalty(input_data, output_data, mono_lambda = 0.):
+    # Create an instance of MonotonicityEnforcer
+    monotonicity_enforcer = MonotonicityEnforcer(input_data, output_data)
+    # Compute the monotonicity penalty
+    monotonicity_penalty = monotonicity_enforcer.compute_penalty()
+    return monotonicity_penalty*mono_lambda
 
 
-def visualize_loss(train_loss_history,val_loss_history): 
+
+def visualize_loss(train_loss_history, val_loss_history): 
     
     train_loss_history_np = [loss.detach().cpu().numpy() for loss in train_loss_history]
     

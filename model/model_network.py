@@ -527,4 +527,4 @@ class HierarchNeuralAdditiveModel(torch.nn.Module):
             if self.final_activation:
                 outputs = self.final_activation(outputs)
 
-            return outputs, phase1_gams_out, phase2_gams_out
+            return outputs, latent_outputs, phase1_gams_out, phase2_gams_out

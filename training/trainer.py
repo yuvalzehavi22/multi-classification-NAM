@@ -15,7 +15,7 @@ from torch.optim.lr_scheduler import StepLR
 import wandb
 
 #from utils import define_device
-from training.trainer_utils import l1_penalty, l2_penalty, penalized_mse
+from training.trainer_utils import l1_penalty, l2_penalty, monotonic_penalty
 from utils.utils import define_device
 from utils.model_parser import *
 
@@ -90,6 +90,7 @@ class Trainer:
                  l1_lambda_phase2: float = 0.,
                  l2_lambda_phase1: float = 0.,
                  l2_lambda_phase2: float = 0.,
+                 monotonicity_lambda: float = 0.,
                  eval_every: int = 1,
                  early_stop_delta: float =0.001,
                  early_stop_patience: int =10,
@@ -107,6 +108,7 @@ class Trainer:
         self.l2_lambda_phase1 = l2_lambda_phase1
         self.l1_lambda_phase2 = l1_lambda_phase2
         self.l2_lambda_phase2 = l2_lambda_phase2
+        self.monotonicity_lambda = monotonicity_lambda
         self.eval_every = eval_every
         self.early_stop_delta = early_stop_delta
         self.early_stop_patience = early_stop_patience
@@ -146,11 +148,12 @@ class Trainer:
         val_loader : DataLoader, optional
             DataLoader for the validation set (for early stopping).
         """
-        # Initialize W&B run and log the parameters
-        wandb.init(project="Hirarchial GAMs", config=args)
+        # # Initialize W&B run and log the parameters
+        # wandb.init(project="Hirarchial GAMs", config=args)
 
         train_loss_history = []
         val_loss_history = []
+
         for epoch in tqdm(range(self.epochs)):
             epoch_loss = self.train_epoch(loader)
             train_loss_history.append(epoch_loss)  
@@ -171,8 +174,8 @@ class Trainer:
                 if val_loss < self.best_val_loss - self.early_stop_delta:
                     self.best_val_loss = val_loss
                     self.early_stop_counter = 0
-                    self.save_model("best_model.pth")
-                    wandb.save(f"model_epoch_{epoch}.pth")
+                    self.save_model("best_model.pt")
+                    wandb.save(f"model_epoch_{epoch}.pt")
                 else:
                     self.early_stop_counter += 1
                     if self.early_stop_counter >= self.early_stop_patience:
@@ -239,7 +242,7 @@ class Trainer:
         
         # Forward pass
         if self.model.hierarch_net:
-            logits, phase1_gams_out, phase2_gams_out = self.model(X)
+            logits, latent_features, phase1_gams_out, phase2_gams_out = self.model(X)
         else:
             logits, phase1_gams_out = self.model(X)
             phase2_gams_out = None
@@ -247,13 +250,17 @@ class Trainer:
         loss = self.criterion(logits.view(-1), y.view(-1))
 
         # Add L1 and L2 regularization for phase 1
-        #loss += l1_penalty(phase1_gams_out, self.l1_lambda_phase1)
+        #loss += l1_penalty(self.model, self.l1_lambda_phase1)
+        loss += l1_penalty(phase1_gams_out, self.l1_lambda_phase1)
         loss += l2_penalty(phase1_gams_out, self.l2_lambda_phase1)
 
         # Add L1 and L2 regularization for phase 2 if applicable
         if phase2_gams_out is not None:
-            #loss += l1_penalty(phase2_gams_out, self.l1_lambda_phase2)
+            loss += l1_penalty(phase2_gams_out, self.l1_lambda_phase2)
             loss += l2_penalty(phase2_gams_out, self.l2_lambda_phase2)
+
+        # Add Monotonicity Penalty
+        loss += monotonic_penalty(latent_features, logits, self.monotonicity_lambda)
 
         # Backward pass and optimization step
         self.optimizer.zero_grad()
@@ -289,7 +296,7 @@ class Trainer:
             for X, y in val_loader:
                 X, y = X.to(self.device), y.to(self.device)
                 if self.model.hierarch_net:
-                    logits, _, _ = self.model(X)
+                    logits, _, _, _ = self.model(X)
                 else:
                     logits, _ = self.model(X)
 
@@ -345,8 +352,10 @@ class Trainer:
         
         Parameters:
         -----------
-        lr_scheduler_type : lr_scheduler name
-        scheduler_params : 
+        lr_scheduler_type : str
+            Name of the lr_scheduler to use
+        scheduler_params : dict
+            Parameters for the specific lr_scheduler
         
         Returns:
         --------
@@ -354,12 +363,32 @@ class Trainer:
         """
         if lr_scheduler_type == 'StepLR':
             lr_scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
+            lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 
+                                                       step_size=scheduler_params.get('step_size', 10), 
+                                                       gamma=scheduler_params.get('gamma', 0.1))
 
-        # elif lr_scheduler_type == 'ReduceLROnPlateau':
+        elif lr_scheduler_type == 'ReduceLROnPlateau':
+            lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode=scheduler_params.get('mode', 'min'),
+                                                                factor=scheduler_params.get('factor', 0.1),
+                                                                patience=scheduler_params.get('patience', 10),
+                                                                threshold=scheduler_params.get('threshold', 0.0001),
+                                                                min_lr=scheduler_params.get('min_lr', 0))
 
-        # elif lr_scheduler_type == 'CyclicLR':
+        elif lr_scheduler_type == 'CyclicLR':
+            lr_scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer,
+                                                     base_lr=scheduler_params.get('base_lr', 0.001),
+                                                     max_lr=scheduler_params.get('max_lr', 0.1),
+                                                     step_size_up=scheduler_params.get('step_size_up', 2000),
+                                                     mode=scheduler_params.get('mode', 'triangular'))
 
-        # elif lr_scheduler_type == 'OneCycleLR':
+        elif lr_scheduler_type == 'OneCycleLR':
+            lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer,
+                                                       max_lr=scheduler_params.get('max_lr', 0.01),
+                                                       total_steps=scheduler_params.get('total_steps', None),
+                                                       epochs=scheduler_params.get('epochs', 10),
+                                                       steps_per_epoch=scheduler_params.get('steps_per_epoch', 100),
+                                                       pct_start=scheduler_params.get('pct_start', 0.3),
+                                                       anneal_strategy=scheduler_params.get('anneal_strategy', 'linear'))
 
         elif lr_scheduler_type == 'NoScheduler':
             lr_scheduler = None

@@ -2,62 +2,7 @@ from matplotlib import pyplot as plt
 import sklearn
 import torch
 import torch.nn.functional as F
-
-
-def visualize_gam(model, x_values, input_dim, output_dim, vis_lat_features = False):
-    model.eval()  # Set model to evaluation mode
-    device = next(model.parameters()).device  # Get the device model is on
-
-    x_values = x_values.to(device)
-    
-    # Plot learned functions
-    fig, axes = plt.subplots(input_dim, output_dim, figsize=(15,30))
-
-    feature_output_max = {} 
-    feature_output_min = {}
-
-    for j in range(output_dim):
-        feature_output_max[f'output_{j}'] = []
-        feature_output_min[f'output_{j}'] = []
-
-    for i in range(input_dim):
-        with torch.no_grad():
-            feature_input = x_values
-            for j in range(output_dim):
-                if model.hierarch_net:
-                    if vis_lat_features:
-                        feature_output = model.NAM_features.feature_nns[i](feature_input[:, 0])[:, j].cpu().numpy()
-                    else:          
-                        feature_output = model.NAM_output.feature_nns[i](feature_input[:, 0])[:, j].cpu().numpy()
-                else:
-                    # plot without hirarchical model
-                    feature_output = model.feature_nns[i](feature_input[:, 0])[:, j].cpu().numpy()
-                    
-                feature_output_max[f'output_{j}'].append(max(feature_output)) 
-                feature_output_min[f'output_{j}'].append(min(feature_output))
-
-    for i in range(input_dim):
-        with torch.no_grad(): 
-            for j in range(output_dim):
-                ax1 = axes[i, j]
-                if model.hierarch_net:
-                    if vis_lat_features:
-                        feature_output = model.NAM_features.feature_nns[i](feature_input[:, 0])[:, j].cpu().numpy()
-                    else:          
-                        feature_output = model.NAM_output.feature_nns[i](feature_input[:, 0])[:, j].cpu().numpy()
-                else:
-                    # plot without hirarchical model
-                    feature_output = model.feature_nns[i](feature_input[:, 0])[:, j].cpu().numpy()
-                    
-                ax1.scatter(x_values.cpu().numpy(), feature_output, label=f'Feature {i+1}')
-                ax1.set_title(f'Feature {i+1} to output {j}')
-                ax1.set_xlabel('Input')
-                ax1.set_ylabel('Output')
-                ax1.set_ylim([min(feature_output_min[f'output_{j}'])*1.3, max(feature_output_max[f'output_{j}'])*1.3])
-
-    plt.tight_layout()
-    plt.show()
-    return
+import wandb
 
 
 # def calculate_metric(logits,

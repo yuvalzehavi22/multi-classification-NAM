@@ -149,33 +149,45 @@ class SyntheticDatasetGenerator:
             X = Uniform(0, 3).sample((num_exp, in_features))
         print(X.shape)
         
+        # Creating a dict to save all the true shape functions 
+        shape_functions = {}
+        for j in range(4):
+            for i in range(in_features):
+                shape_functions[f"f_{j}_{i}"] = torch.zeros(num_exp)
+
+        # creating y_0
+        shape_functions['f_0_0'] = X[:, 0]
+        shape_functions['f_0_1'] = 2*(X[:, 1]**2)
+        shape_functions['f_0_2'] = (1/3)*(X[:, 2]**3)
+        y_0 = shape_functions['f_0_0'] + shape_functions['f_0_1'] + shape_functions['f_0_2']
+        y_0 = y_0.reshape(-1, 1)
+        
         # creating y_1
-        # y_1 = X[:, 0] + 0.5*(3*(X[:, 1]**2)-1) + 0.5*(X[:, 2]**3)
-        y_1 = X[:, 0] + 2*(X[:, 1]**2) + (1/3)*(X[:, 2]**3)
+        shape_functions['f_1_5'] = (2/3) * torch.log(100 * X[:, 5].abs())
+        shape_functions['f_1_6'] = torch.cos(5 * X[:, 6])
+        y_1 = shape_functions['f_1_5'] + shape_functions['f_1_6']
         y_1 = y_1.reshape(-1, 1)
-        #print(y_1.shape)
         
         # creating y_2
-        y_2 = (2/3) * torch.log(100 * X[:, 5].abs()) + torch.cos(5 * X[:, 6])
+        shape_functions['f_2_7'] = (3/4) * torch.exp(-4 * X[:, 7].abs())
+        shape_functions['f_2_8'] = 0.5*(torch.sin(5 * X[:, 8])+1)
+        y_2 = shape_functions['f_2_7'] + shape_functions['f_2_8']
         y_2 = y_2.reshape(-1, 1)
-        #print(y_2.shape)
         
         # creating y_3
-        y_3 = (3/4) * torch.exp(-4 * X[:, 7].abs()) + 0.5*(torch.sin(5 * X[:, 8])+1)
+        shape_functions['f_3_5'] = torch.exp(0.5 * X[:, 5])
+        shape_functions['f_3_2'] = 0.5*(X[:, 2]**2)
+        y_3 = shape_functions['f_3_5'] + shape_functions['f_3_2']
         y_3 = y_3.reshape(-1, 1)
         
-        # creating y_4
-        y_4 = torch.exp(0.5 * X[:, 5]) + 0.5*(X[:, 2]**2)
-        y_4 = y_4.reshape(-1, 1)
-        
         # Stack all y_i to form the final target matrix
-        y = torch.cat([y_1, y_2, y_3, y_4], dim=1)
+        y = torch.cat([y_0 ,y_1, y_2, y_3], dim=1)
         print(y.shape)
         
-        return X, y
+        return X, y, shape_functions
 
     @staticmethod
-    def get_synthetic_data_phase2(X_input):
+    def get_synthetic_data_phase2(X_input, is_test=False):
         """
         Generate synthetic target values for Phase 2 using input features.
         
@@ -184,24 +196,40 @@ class SyntheticDatasetGenerator:
         X_input : torch.Tensor
             Input features for generating synthetic targets.
         
+        is_test : bool
+            generate data for testing the results.
+        
         Returns:
         --------
         y : torch.Tensor
             Generated target values for Phase 2.
         """
+        if is_test:
+            x_values = torch.linspace(0, 3, X_input.size(0)).reshape(-1, 1)  # 100 points between -1 and 1
+            X_input = x_values.repeat(1, X_input.size(1))
+
+        # Creating a dict to save all the true shape functions 
+        shape_functions = {}
+        for j in range(2):
+            for i in range(X_input.size(1)):
+                shape_functions[f"f_{j}_{i}"] = torch.zeros(X_input.size(0))
+
+        # creating y_0
+        shape_functions['f_0_0'] = X_input[:, 0]
+        shape_functions['f_0_2'] = 2*X_input[:, 2]
+        y_0 = shape_functions['f_0_0'] + shape_functions['f_0_2']
+        y_0 = y_0.reshape(-1, 1)
+        
         # creating y_1
-        y_1 = - X_input[:, 0] - 2*X_input[:, 2]
+        shape_functions['f_1_1'] = 3*X_input[:, 1]
+        y_1 = shape_functions['f_1_1']
         y_1 = y_1.reshape(-1, 1)
         
-        # creating y_2
-        y_2 = 3*X_input[:, 1]
-        y_2 = y_2.reshape(-1, 1)
-        
         # Stack all y_i to form the final target matrix
-        y = torch.cat([y_1, y_2], dim=1)
+        y = torch.cat([y_0, y_1], dim=1)
         print(y.shape)
 
-        return y
+        return y, shape_functions
 
     @staticmethod
     def make_loader(X, y, batch_size=32):

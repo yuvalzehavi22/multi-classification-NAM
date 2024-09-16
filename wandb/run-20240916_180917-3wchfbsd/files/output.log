@@ -1,0 +1,9 @@
+cuda
+torch.Size([50000, 10])
+torch.Size([50000, 4])
+Traceback (most recent call last):
+  File "run_model.py", line 140, in <module>
+    main()
+  File "run_model.py", line 41, in main
+    X, y_phase1 = SyntheticDatasetGenerator.get_synthetic_data_phase1(args.num_exp, args.in_features)
+ValueError: too many values to unpack (expected 2)

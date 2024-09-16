@@ -151,4 +151,15 @@ def visualize_combined_gam(model, x_values, input_dim, output_dim, shape_functio
                 ax1.legend()
 
     plt.tight_layout()
-    plt.show()
+    if vis_lat_features:
+        fig_name = "Shape functions for phase1"
+    else:
+        fig_name = "Shape functions for phase2"
+    plt.savefig(f"{fig_name}.png")
+
+    # Log the plot to W&B
+    wandb.log({fig_name: wandb.Image(f"{fig_name}.png")})
+    plt.close()
+    
+    #plt.show()
+    return

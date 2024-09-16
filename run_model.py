@@ -38,14 +38,14 @@ def main():
     seed_everything(args.seed)
 
     # DATA PROCESSING: Generate synthetic data for Phase 1 and Phase 2
-    X, y_phase1 = SyntheticDatasetGenerator.get_synthetic_data_phase1(args.num_exp, args.in_features)
-    y_phase2 = SyntheticDatasetGenerator.get_synthetic_data_phase2(y_phase1)
+    X, y_phase1, _ = SyntheticDatasetGenerator.get_synthetic_data_phase1(args.num_exp, args.in_features)
+    y_phase2, _ = SyntheticDatasetGenerator.get_synthetic_data_phase2(y_phase1)
 
     SyntheticDataset= True
     if SyntheticDataset:
         # Generate synthetic data for validation set
-        X_val, y_phase1_val = SyntheticDatasetGenerator.get_synthetic_data_phase1(10000, args.in_features)
-        y_phase2_val = SyntheticDatasetGenerator.get_synthetic_data_phase2(y_phase1_val)
+        X_val, y_phase1_val, _ = SyntheticDatasetGenerator.get_synthetic_data_phase1(10000, args.in_features)
+        y_phase2_val, _ = SyntheticDatasetGenerator.get_synthetic_data_phase2(y_phase1_val)
 
         train_loader = SyntheticDatasetGenerator.make_loader(X, y_phase2, batch_size=args.batch_size)
         val_loader = SyntheticDatasetGenerator.make_loader(X_val, y_phase2_val, batch_size=args.batch_size)

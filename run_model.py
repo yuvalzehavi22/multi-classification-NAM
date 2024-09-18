@@ -47,8 +47,12 @@ def main():
         X_val, y_phase1_val, _ = SyntheticDatasetGenerator.get_synthetic_data_phase1(10000, args.in_features)
         y_phase2_val, _ = SyntheticDatasetGenerator.get_synthetic_data_phase2(y_phase1_val)
 
-        train_loader = SyntheticDatasetGenerator.make_loader(X, y_phase2, batch_size=args.batch_size)
-        val_loader = SyntheticDatasetGenerator.make_loader(X_val, y_phase2_val, batch_size=args.batch_size)
+        if args.hierarch_net:
+            train_loader = SyntheticDatasetGenerator.make_loader(X, y_phase2, batch_size=args.batch_size)
+            val_loader = SyntheticDatasetGenerator.make_loader(X_val, y_phase2_val, batch_size=args.batch_size)
+        else:
+            train_loader = SyntheticDatasetGenerator.make_loader(X, y_phase1, batch_size=args.batch_size)
+            val_loader = SyntheticDatasetGenerator.make_loader(X_val, y_phase1_val, batch_size=args.batch_size)
     else:
         # Initialize DataLoaderWrapper with validation split
         dataloader_wrapper = DataLoaderWrapper(X, y_phase2, val_split=args.val_split)
@@ -64,7 +68,8 @@ def main():
 
     print("Training Hierarchical NAM...")
     print(f"Phase1 architecture: [{args.first_activate_layer_phase1}: {args.first_hidden_dim_phase1}, {args.hidden_activate_layer_phase1}: {args.hidden_dim_phase1}]")
-    print(f"Phase2 architecture: [{args.first_activate_layer_phase2}: {args.first_hidden_dim_phase2}, {args.hidden_activate_layer_phase2}: {args.hidden_dim_phase2}]")
+    if args.hierarch_net:
+        print(f"Phase2 architecture: [{args.first_activate_layer_phase2}: {args.first_hidden_dim_phase2}, {args.hidden_activate_layer_phase2}: {args.hidden_dim_phase2}]")
 
     # Model definition: HierarchNeuralAdditiveModel
     hirarch_nam = HierarchNeuralAdditiveModel(num_inputs=args.in_features,
@@ -97,6 +102,9 @@ def main():
                                         group_size_phase2 = args.group_size_phase2, 
                                         monotonic_constraint_phase2 = args.monotonic_constraint_phase2
                                         ).to(device)
+    
+    # Watch model weights and gradients
+    wandb.watch(hirarch_nam, log="all")
 
     # Initialize the Trainer class
     trainer = Trainer(
@@ -145,4 +153,5 @@ if __name__ == "__main__":
 # --optimizer "Adam" --epochs 100 --batch_size 1024 --learning_rate 0.0035 --weight_decay 0.0001 --first_hidden_dim_phase1 64 --hidden_dim_phase1 64 32 --first_activate_layer_phase1 "ReLU" --hidden_activate_layer_phase1 "ReLU" --first_hidden_dim_phase2 128 --hidden_dim_phase2 128 64 --first_activate_layer_phase2 "LipschitzMonotonic" --hidden_activate_layer_phase2 "LipschitzMonotonic"
 #python run_model.py --seed 42 --eval_every 50 --featureNN_arch_phase1 'single_to_multi_output' --featureNN_arch_phase2 'parallel_single_output' --learning_rate 0.0001 --epochs 1000 --l1_lambda_phase1 1e-5 --l1_lambda_phase2 1e-6
 #python run_model.py --seed 42 --eval_every 50 --featureNN_arch_phase1 'single_to_multi_output' --featureNN_arch_phase2 'parallel_single_output' --learning_rate 0.0001 --epochs 1000 --l1_lambda_phase1 1e-8 --l1_lambda_phase2 1e-7 --monotonicity_lambda 1e-6
-#python run_model.py --seed 42 --eval_every 50 --featureNN_arch_phase1 'single_to_multi_output' --featureNN_arch_phase2 'parallel_single_output' --learning_rate 0.0001 --epochs 1000 --l1_lambda_phase1 1e-8 --l1_lambda_phase2 1e-7 --monotonicity_lambda 1e-6 --first_hidden_dim_phase2 64 --hidden_dim_phase2 64 32 --first_activate_layer_phase2 "ReLU" --hidden_activate_layer_phase2 "ReLU"
+#python run_model.py --seed 42 --eval_every 50 --featureNN_arch_phase1 'single_to_multi_output' --featureNN_arch_phase2 'parallel_single_output' --learning_rate 0.0005 --epochs 1000 --l1_lambda_phase1 1e-8 --l1_lambda_phase2 1e-7 --monotonicity_lambda 1e-6 --first_hidden_dim_phase2 64 --hidden_dim_phase2 64 32 --first_activate_layer_phase2 "ReLU" --hidden_activate_layer_phase2 "ReLU"
+#python run_model.py --seed 42 --eval_every 50 --learning_rate 0.0035 --epochs 1000 --hierarch_net 0

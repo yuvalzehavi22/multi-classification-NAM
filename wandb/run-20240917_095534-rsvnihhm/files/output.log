@@ -1,0 +1,29 @@
+cuda
+torch.Size([50000, 10])
+torch.Size([50000, 4])
+torch.Size([50000, 2])
+torch.Size([10000, 10])
+torch.Size([10000, 4])
+torch.Size([10000, 2])
+Train size: 50000 Val size: 10000
+Training Hierarchical NAM...
+Phase1 architecture: [ReLU: 64, ReLU: [64, 32]]
+  0%|                                                                                                                                                                                                                        | 0/1000 [00:00<?, ?it/s]/home/yuvalzehavi1/Repos/multi-classification-NAM/training/trainer.py:250: UserWarning: Using a target size (torch.Size([2048])) that is different to the input size (torch.Size([4096])). This will likely lead to incorrect results due to broadcasting. Please ensure they have the same size.
+  loss = self.criterion(logits.view(-1), y.view(-1))
+  0%|                                                                                                                                                                                                                        | 0/1000 [00:00<?, ?it/s]
+Traceback (most recent call last):
+  File "run_model.py", line 144, in <module>
+    main()
+  File "run_model.py", line 130, in main
+    train_loss_history, val_loss_history = trainer.train(args, train_loader, val_loader)
+  File "/home/yuvalzehavi1/Repos/multi-classification-NAM/training/trainer.py", line 158, in train
+    epoch_loss = self.train_epoch(loader)
+  File "/home/yuvalzehavi1/Repos/multi-classification-NAM/training/trainer.py", line 219, in train_epoch
+    loss = self.train_batch(X, y)
+  File "/home/yuvalzehavi1/Repos/multi-classification-NAM/training/trainer.py", line 250, in train_batch
+    loss = self.criterion(logits.view(-1), y.view(-1))
+  File "/home/yuvalzehavi1/.local/lib/python3.8/site-packages/torch/nn/functional.py", line 3383, in mse_loss
+    expanded_input, expanded_target = torch.broadcast_tensors(input, target)
+  File "/home/yuvalzehavi1/.local/lib/python3.8/site-packages/torch/functional.py", line 77, in broadcast_tensors
+    return _VF.broadcast_tensors(tensors)  # type: ignore[attr-defined]
+RuntimeError: The size of tensor a (4096) must match the size of tensor b (2048) at non-singleton dimension 0

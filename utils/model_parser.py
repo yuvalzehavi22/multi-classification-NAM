@@ -86,7 +86,13 @@ def parse_args():
         # ----------------------------------------------------------------------------------
         # Model architecture
         parser.add_argument('--task_type', type=str, default='regression', help="The type of task. Options: 'regression', 'binary_classification', 'multi_classification'")
-        parser.add_argument('--hierarch_net', type=bool, default=True, help='Boolean var that determines whether the hierarchical net is used (adding phase2)')
+        parser.add_argument(
+            '--hierarch_net', 
+            type=int,
+            choices=[0, 1],  # Only allow 0 or 1 as valid input
+            default=1,       # Default value: 0 for False 
+            help="Use hierarchical net (adding phase2) - 0 for False, 1 for True"
+        )
         parser.add_argument('--GAM_block_layers_type_phase1', type=str, default='ReLU', help='options: ReLU, shallow_ExU, Monotonic, ExU_ReLU')
         parser.add_argument('--GAM_block_layers_type_phase2', type=str, default='Monotonic', help='options: ReLU, shallow_ExU, Monotonic, ExU_ReLU')
 
@@ -127,15 +133,17 @@ def parse_args():
         )
         parser.add_argument(
             '--shallow_phase1', 
-            type=bool, 
-            default=False, 
-            help="If True, then a shallow network with a single hidden layer is created - the model will not use the 'hidden_activate_layer_phase1'"
+            type=int, 
+            choices=[0, 1],
+            default=0, 
+            help="0 for False, 1 for True. If True, then a shallow network with a single hidden layer is created - the model will not use the 'hidden_activate_layer_phase1'"
         )
         parser.add_argument(
             '--shallow_phase2', 
-            type=bool, 
-            default=False,
-            help="If True, then a shallow network with a single hidden layer is created - the model will not use the 'hidden_activate_layer_phase2'"
+            type=int,
+            choices=[0, 1],
+            default=0,
+            help="0 for False, 1 for True. If True, then a shallow network with a single hidden layer is created - the model will not use the 'hidden_activate_layer_phase2'"
         )
         # If not shallow - adding more layers to the network
         parser.add_argument(
@@ -220,8 +228,7 @@ def parse_args():
         parser.add_argument("--l1_lambda_phase1",type=float, default=0.0, help="l1 regularization for the gams outputs of phase1")
         parser.add_argument("--l1_lambda_phase2",type=float, default=0.0, help="l1 regularization for the gams outputs of phase2")
         parser.add_argument("--monotonicity_lambda",type=float, default=0.0, help="Parameter to controls the strength of the monotonicity constraint")
-        #parser.add_argument("--output_regularization",type=float, default=0.0, help="feature regularization")
-        #parser.add_argument("--l2_regularization",type=float, default=0.0, help="l2 weight decay")
+
         parser.add_argument('--eval_every', type=int, default=1, help='Evaluate ever y N epochs')
         parser.add_argument('--early_stop_delta', type=float, default=0.0, help='Min delta for early stopping')
         parser.add_argument('--early_stop_patience', type=int, default=200, help='Patience for early stopping')

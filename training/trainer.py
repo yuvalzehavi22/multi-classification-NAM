@@ -259,8 +259,8 @@ class Trainer:
             loss += l1_penalty(phase2_gams_out, self.l1_lambda_phase2)
             loss += l2_penalty(phase2_gams_out, self.l2_lambda_phase2)
 
-        # Add Monotonicity Penalty
-        loss += monotonic_penalty(latent_features, logits, self.monotonicity_lambda)
+            # Add Monotonicity Penalty
+            loss += monotonic_penalty(latent_features, logits, self.monotonicity_lambda)
 
         # Backward pass and optimization step
         self.optimizer.zero_grad()

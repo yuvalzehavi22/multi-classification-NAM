@@ -1,3 +1,4 @@
+import json
 import numpy as np
 from typing import Union, Iterable, Sized, Tuple
 import torch
@@ -19,7 +20,7 @@ from model.model_network import HierarchNeuralAdditiveModel
 from utils.visualize_shape_functions import get_shape_functions, get_shape_functions_synthetic_data
 from utils.model_architecture_type import get_defult_architecture_phase1, get_defult_architecture_phase2
 from training.trainer import Trainer
-from training.trainer_utils import visualize_loss
+from training.trainer_utils import get_param_groups, set_lr_scheduler_params, visualize_loss
 from utils.utils import define_device, seed_everything
 from utils.model_parser import parse_args
 
@@ -30,7 +31,7 @@ def main():
     args = parse_args()
 
     # Initialize W&B run and log the parameters
-    wandb.init(project="Hirarchial GAMs", config=args)
+    wandb.init(project=args.WB_project_name, config=args)
     
     # Set device and seed
     device = define_device("auto")
@@ -103,8 +104,11 @@ def main():
                                         monotonic_constraint_phase2 = args.monotonic_constraint_phase2
                                         ).to(device)
     
-    # Watch model weights and gradients
-    wandb.watch(hirarch_nam, log="all")
+    # # Watch model weights and gradients
+    # wandb.watch(hirarch_nam, log="gradients", log_freq=args.batch_size)
+
+    scheduler_params = set_lr_scheduler_params(args, args.lr_scheduler)
+    print(scheduler_params)
 
     # Initialize the Trainer class
     trainer = Trainer(
@@ -112,7 +116,7 @@ def main():
         optimizer=args.optimizer,
         loss_function=None,
         lr_scheduler=args.lr_scheduler, 
-        scheduler_params=None,
+        scheduler_params=scheduler_params,
         eval_metric=None, 
         epochs=args.epochs, 
         batch_size=args.batch_size, 
@@ -130,8 +134,17 @@ def main():
         device_name="auto"
     )
 
+    if args.track_gradients:
+        all_param_groups = get_param_groups(hirarch_nam, args)
+    else:
+        all_param_groups=None
+        
     # Run the training phase
-    train_loss_history, val_loss_history = trainer.train(args, train_loader, val_loader)
+    train_loss_history, val_loss_history = trainer.train(args, train_loader, all_param_groups, val_loader)
+
+    # val_loss_data = {"val_loss": val_loss_history[-1]}
+    # with open("val_loss.json", "w") as f:
+    #     json.dump(val_loss_data, f)
 
     # print loss curves
     if 0:
@@ -150,8 +163,8 @@ if __name__ == "__main__":
 
 
 #python run_model.py --seed 42 --eval_every 50 --featureNN_arch_phase1 'single_to_multi_output' --featureNN_arch_phase2 'parallel_single_output' --learning_rate 0.0035 --epochs 1000 --l1_lambda_phase1 0.001
-# --optimizer "Adam" --epochs 100 --batch_size 1024 --learning_rate 0.0035 --weight_decay 0.0001 --first_hidden_dim_phase1 64 --hidden_dim_phase1 64 32 --first_activate_layer_phase1 "ReLU" --hidden_activate_layer_phase1 "ReLU" --first_hidden_dim_phase2 128 --hidden_dim_phase2 128 64 --first_activate_layer_phase2 "LipschitzMonotonic" --hidden_activate_layer_phase2 "LipschitzMonotonic"
+#python run_model.py --optimizer "Adam" --epochs 100 --batch_size 1024 --learning_rate 0.0035 --weight_decay 0.0001 --first_hidden_dim_phase1 64 --hidden_dim_phase1 64 32 --first_activate_layer_phase1 "ReLU" --hidden_activate_layer_phase1 "ReLU" --first_hidden_dim_phase2 128 --hidden_dim_phase2 128 64 --first_activate_layer_phase2 "LipschitzMonotonic" --hidden_activate_layer_phase2 "LipschitzMonotonic"
 #python run_model.py --seed 42 --eval_every 50 --featureNN_arch_phase1 'single_to_multi_output' --featureNN_arch_phase2 'parallel_single_output' --learning_rate 0.0001 --epochs 1000 --l1_lambda_phase1 1e-5 --l1_lambda_phase2 1e-6
 #python run_model.py --seed 42 --eval_every 50 --featureNN_arch_phase1 'single_to_multi_output' --featureNN_arch_phase2 'parallel_single_output' --learning_rate 0.0001 --epochs 1000 --l1_lambda_phase1 1e-8 --l1_lambda_phase2 1e-7 --monotonicity_lambda 1e-6
 #python run_model.py --seed 42 --eval_every 50 --featureNN_arch_phase1 'single_to_multi_output' --featureNN_arch_phase2 'parallel_single_output' --learning_rate 0.0005 --epochs 1000 --l1_lambda_phase1 1e-8 --l1_lambda_phase2 1e-7 --monotonicity_lambda 1e-6 --first_hidden_dim_phase2 64 --hidden_dim_phase2 64 32 --first_activate_layer_phase2 "ReLU" --hidden_activate_layer_phase2 "ReLU"
-#python run_model.py --seed 42 --eval_every 50 --learning_rate 0.0035 --epochs 1000 --hierarch_net 0
+#python run_model.py --seed 42 --eval_every 50 --learning_rate 0.001 --epochs 1000 --hierarch_net 0 --featureNN_arch_phase1 'single_to_multi_output' --batch_size 1024 --lr_scheduler 'StepLR' --l2_lambda_phase1 1e-6

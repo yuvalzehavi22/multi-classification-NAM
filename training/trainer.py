@@ -3,6 +3,7 @@ import os
 import time
 from collections import OrderedDict
 from os.path import join as pjoin, exists as pexists
+from matplotlib import pyplot as plt
 from matplotlib.path import Path
 from tqdm import tqdm
 import numpy as np
@@ -13,6 +14,7 @@ from typing import List, Any, Dict
 from torch.nn.utils import clip_grad_norm_
 from torch.optim.lr_scheduler import StepLR
 import wandb
+import plotly.graph_objects as go
 
 #from utils import define_device
 from training.trainer_utils import l1_penalty, l2_penalty, monotonic_penalty
@@ -136,7 +138,7 @@ class Trainer:
         else:
             self.criterion = loss_function
         
-    def train(self, args, loader, val_loader=None):
+    def train(self, args, loader, all_param_groups=None, val_loader=None):
         """
         Runs the training process.
         
@@ -154,9 +156,16 @@ class Trainer:
         train_loss_history = []
         val_loss_history = []
 
+        # Initialize a dictionary to store gradient norms
+        grad_norms = {}
+
         for epoch in tqdm(range(self.epochs)):
             epoch_loss = self.train_epoch(loader)
             train_loss_history.append(epoch_loss)  
+
+            # Track and log gradients
+            self._track_gradients(grad_norms, epoch)
+            #self._log_gradients_wandb(grad_norms, epoch)
            
             if self.lr_scheduler:
                 self.lr_scheduler.step()
@@ -194,6 +203,12 @@ class Trainer:
                     print(f"Epoch {epoch} | Total Loss: {epoch_loss:.5f}")
                     # Log metrics to W&B
                     wandb.log({"Epoch": epoch, "Training loss": epoch_loss})
+        
+        if all_param_groups:
+            # Plot the gradients at the end of training and log the plot to W&B
+            print('Plot the gradients at the end of training...')
+            self._plot_gradients(grad_norms, all_param_groups)
+            #wandb.log({"Gradient Norms Plot": wandb.Image("gradient_norms.png")})
 
         return train_loss_history, val_loss_history
     
@@ -218,7 +233,7 @@ class Trainer:
         for X, y in loader:
             loss = self.train_batch(X, y)
             epoch_loss += loss
-        
+
         return epoch_loss / len(loader)
 
     def train_batch(self, X, y):
@@ -265,8 +280,10 @@ class Trainer:
         # Backward pass and optimization step
         self.optimizer.zero_grad()
         loss.backward()
+
         if self.clip_value:
             clip_grad_norm_(self.model.parameters(), self.clip_value)
+        
         self.optimizer.step()
 
         return loss.item()
@@ -362,7 +379,7 @@ class Trainer:
         lr_scheduler function
         """
         if lr_scheduler_type == 'StepLR':
-            lr_scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
+            #lr_scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
             lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 
                                                        step_size=scheduler_params.get('step_size', 10), 
                                                        gamma=scheduler_params.get('gamma', 0.1))
@@ -378,8 +395,7 @@ class Trainer:
             lr_scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer,
                                                      base_lr=scheduler_params.get('base_lr', 0.001),
                                                      max_lr=scheduler_params.get('max_lr', 0.1),
-                                                     step_size_up=scheduler_params.get('step_size_up', 2000),
-                                                     mode=scheduler_params.get('mode', 'triangular'))
+                                                     step_size_up=scheduler_params.get('step_size_up', 2000))
 
         elif lr_scheduler_type == 'OneCycleLR':
             lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer,
@@ -394,6 +410,51 @@ class Trainer:
             lr_scheduler = None
 
         return lr_scheduler
+
+    # Function to track and store gradient norms
+    def _track_gradients(self, grad_norms, epoch):
+        """
+        track the magnitude of the gradients layer by layer during training
+        """
+        grad_norms[epoch] = {}
+        for name, param in self.model.named_parameters():
+            if param.requires_grad and param.grad is not None: #and name in layers_to_track 
+                grad_norms[epoch][name] = param.grad.norm().item()
+    
+    # Function to plot gradient norms
+    def _plot_gradients(self, grad_norms, all_groups):
+        for group_name, group_content in all_groups.items():
+
+            fig = go.Figure()
+
+            for layer in group_content:
+                grad_values = [grad_norms[epoch][layer] for epoch in grad_norms]
+                fig.add_trace(go.Scatter(x=list(grad_norms.keys()), y=grad_values, mode='lines', name=layer))
+
+            fig.update_layout(
+                title=f"Gradient Norms - {group_name}",
+                xaxis_title="Epoch",
+                yaxis_title="Gradient Norm",
+                legend=dict(
+                    x=1.05,  # Positioning the legend outside the figure
+                    y=0.5,
+                    traceorder="normal",
+                    font=dict(size=10),
+                    bordercolor="Black",
+                    borderwidth=1
+                )
+            )
+
+            #fig.show()
+            # Log the figure to W&B
+            wandb.log({f"Gradient Norms Plot: {group_name}": fig})
+
+    def _log_gradients_wandb(self, grad_norms, epoch):
+        """
+        Logging gradients with W&B
+        """
+        for layer in grad_norms[epoch].keys():
+            wandb.log({layer: grad_norms[epoch][layer]})
 
     def save_model(self, path):
         """

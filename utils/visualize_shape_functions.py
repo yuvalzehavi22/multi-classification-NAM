@@ -155,13 +155,13 @@ def visualize_combined_gam(model, x_values, input_dim, output_dim, shape_functio
 
                 # Plot the predicted shape function
                 ax1 = axes[i, j]
-                ax1.scatter(x_values.cpu().numpy(), feature_output, label=f'Predicted Feature {i+1}', color='blue', alpha=0.6)
+                ax1.scatter(x_values.cpu().numpy(), feature_output, label=f'Predicted Feature {i}', color='blue', alpha=0.6)
                 
                 # Plot the true shape function
-                ax1.plot(x_values.cpu().numpy(), true_feature_output, label=f'True Feature {i+1}', color='red', linestyle='--')
+                ax1.plot(x_values.cpu().numpy(), true_feature_output, label=f'True Feature {i}', color='red', linestyle='--')
 
                 # Set labels and title
-                ax1.set_title(f'Feature {i+1} to output {j}')
+                ax1.set_title(f'Feature {i} to output {j}')
                 ax1.set_xlabel('Input')
                 ax1.set_ylabel('Output')
 

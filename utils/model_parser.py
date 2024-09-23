@@ -71,6 +71,12 @@ def parse_args():
         parser = argparse.ArgumentParser(description="Define experiment configuration")
         
         parser.add_argument('--seed', type=int, default=42, help='Random seed')
+
+        parser.add_argument(
+            '--WB_project_name', 
+            type=str, 
+            default="Hirarchial GAMs", 
+            help="options:'Hirarchial_GAMs-synt_data', 'GAMs-synt_data_phase1', 'GAMs-synt_data_phase2', 'Hirarchial_GAMs-classification'")
         
         # ---------------------------------------------------------------
         # ----------------------- Data parameters -----------------------
@@ -217,7 +223,7 @@ def parse_args():
         # ---------------------------------------------------------------------
         # ----------------------- train/eval parameters -----------------------
         # ---------------------------------------------------------------------
-        parser.add_argument('--epochs', type=int, default=2000, help='Number of epochs')
+        parser.add_argument('--epochs', type=int, default=1000, help='Number of epochs')
         parser.add_argument('--batch_size', type=int, default=1024, help='Batch size')
         parser.add_argument('--learning_rate', type=float, default=0.0035, help='Learning rate')
         parser.add_argument('--weight_decay', type=float, default=0.0001, help='Weight decay')
@@ -229,7 +235,7 @@ def parse_args():
         parser.add_argument("--l1_lambda_phase2",type=float, default=0.0, help="l1 regularization for the gams outputs of phase2")
         parser.add_argument("--monotonicity_lambda",type=float, default=0.0, help="Parameter to controls the strength of the monotonicity constraint")
 
-        parser.add_argument('--eval_every', type=int, default=1, help='Evaluate ever y N epochs')
+        parser.add_argument('--eval_every', type=int, default=50, help='Evaluate every N epochs')
         parser.add_argument('--early_stop_delta', type=float, default=0.0, help='Min delta for early stopping')
         parser.add_argument('--early_stop_patience', type=int, default=200, help='Patience for early stopping')
         # parser.add_argument(
@@ -238,7 +244,13 @@ def parse_args():
         #     default="val_loss",
         #     help="(val_)loss or (val_)metric name to monitor",
         # )
-
+        parser.add_argument(
+            '--track_gradients', 
+            type=int,
+            choices=[0, 1],  # Only allow 0 or 1 as valid input
+            default=1,       # Default value: 0 for False 
+            help="track_gradients - 0 for False, 1 for True"
+        )
         # --------------------------------------------------------------------
         # ----------------------- Optimizer parameters -----------------------
         # --------------------------------------------------------------------
@@ -254,7 +266,20 @@ def parse_args():
             "--lr_scheduler",
             type=str,
             default="NoScheduler",
-            help="one of 'ReduceLROnPlateau', 'CyclicLR' or 'OneCycleLR', NoScheduler",
+            help="one of 'StepLR', 'ReduceLROnPlateau', 'CyclicLR' or 'OneCycleLR', NoScheduler",
+        )
+        # StepLR params
+        parser.add_argument(
+            "--StepLR_step_size",
+            type=int,
+            default=10,
+            help="Period of learning rate decay",
+        )
+        parser.add_argument(
+            "--StepLR_gamma",
+            type=float,
+            default=0.1,
+            help="Multiplicative factor of learning rate decay",
         )
         # ReduceLROnPlateau (rop) params
         parser.add_argument(
@@ -287,18 +312,36 @@ def parse_args():
             default="abs",
             help="One of rel, abs",
         )
-        # CyclicLR and OneCycleLR params
         parser.add_argument(
-            "--base_lr",
+            "--rop_min_lr",
             type=float,
-            default=0.001,
-            help="base_lr for cyclic lr_schedulers",
+            default=0,
+            help="min lr",
         )
+        # OneCycleLR (oclr) params
         parser.add_argument(
             "--max_lr",
             type=float,
             default=0.01,
             help="max_lr for cyclic lr_schedulers",
+        )
+        parser.add_argument(
+            "--total_steps",
+            type=int,
+            default=None,
+            help="the total number of steps in the cycle",
+        )
+        parser.add_argument(
+            "--oclr_epochs",
+            type=int,
+            default=10,
+            help="the number of epochs to train for",
+        )
+        parser.add_argument(
+            "--oclr_steps_per_epoch",
+            type=int,
+            default=100,
+            help="the number of steps per epoch to train for",
         )
         parser.add_argument(
             "--div_factor",
@@ -313,20 +356,39 @@ def parse_args():
             help="Determines the minimum learning rate via min_lr = initial_lr/final_div_factor",
         )
         parser.add_argument(
-            "--n_cycles",
-            type=float,
-            default=5,
-            help="number of cycles for CyclicLR",
-        )
-        parser.add_argument(
             "--cycle_momentum",
             action="store_true",
         )
         parser.add_argument(
-            "--pct_step_up",
+            "--pct_start",
             type=float,
             default=0.3,
             help="Percentage of the cycle (in number of steps) spent increasing the learning rate",
+        )
+        parser.add_argument(
+            "--anneal_strategy",
+            type=str,
+            default='cos',
+            help="{'cos', 'linear'} Specifies the annealing strategy: “cos” for cosine annealing, “linear” for linear annealing",
+        )  
+        # CyclicLR 
+        parser.add_argument(
+            "--base_lr",
+            type=float,
+            default=0.001,
+            help="base_lr for cyclic lr_schedulers",
+        )
+        parser.add_argument(
+            "--step_size_up",
+            type=int,
+            default=2000,
+            help="Number of training iterations in the increasing half of a cycle",
+        )
+        parser.add_argument(
+            "--step_size_down",
+            type=int,
+            default=None,
+            help="Number of training iterations in the decreasing half of a cycle",
         )
 
         # ----------------------- save parameters -----------------------

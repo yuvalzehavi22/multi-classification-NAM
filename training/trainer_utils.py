@@ -9,6 +9,7 @@ import torch.nn.functional as F
 from typing import List, Any, Dict, Optional
 
 from training.monotonic_constraints import MonotonicityEnforcer
+from utils.model_parser import *
 
 
 def l2_penalty(params, l2_lambda =0.):
@@ -30,7 +31,10 @@ def l2_penalty(params, l2_lambda =0.):
 
 def l1_penalty(params, l1_lambda = 0.):
     l1_norm = sum(p.abs().sum() for p in params)
-    l1_penalty_val = l1_lambda*l1_norm
+    #normelaize
+    total_params = sum(p.numel() for p in params)
+
+    l1_penalty_val = l1_lambda*(l1_norm/total_params)
     return l1_penalty_val
 
 def monotonic_penalty(input_data, output_data, mono_lambda = 0.):
@@ -39,8 +43,6 @@ def monotonic_penalty(input_data, output_data, mono_lambda = 0.):
     # Compute the monotonicity penalty
     monotonicity_penalty = monotonicity_enforcer.compute_penalty()
     return monotonicity_penalty*mono_lambda
-
-
 
 def visualize_loss(train_loss_history, val_loss_history): 
     
@@ -90,3 +92,124 @@ def save_epoch_logs(epoch_logs: Dict,
             log_k = "_".join([stage, k])
             epoch_logs[log_k] = v
     return epoch_logs
+
+
+def set_lr_scheduler_params(args, lr_scheduler_type):
+        """
+        Setup lr_scheduler_params
+        
+        Parameters:
+        -----------
+        args : 
+            
+        
+        Returns:
+        --------
+        scheduler_params : dict
+            Parameters for the specific lr_scheduler
+        """
+        scheduler_params = {}
+
+        if lr_scheduler_type == 'StepLR':
+            scheduler_params['step_size'] = args.StepLR_step_size
+            scheduler_params['gamma'] = args.StepLR_gamma
+
+        elif lr_scheduler_type == 'ReduceLROnPlateau':
+            scheduler_params['mode'] = args.rop_mode
+            scheduler_params['factor'] = args.rop_factor
+            scheduler_params['patience'] = args.rop_patience
+            scheduler_params['threshold'] = args.rop_threshold
+            scheduler_params['min_lr'] = args.rop_min_lr
+
+        elif lr_scheduler_type == 'CyclicLR':
+            scheduler_params['base_lr'] = args.base_lr
+            scheduler_params['max_lr'] = args.max_lr
+            scheduler_params['step_size_up'] = args.step_size_up
+
+        elif lr_scheduler_type == 'OneCycleLR':
+            scheduler_params['max_lr'] = args.max_lr
+            scheduler_params['total_steps'] = args.total_steps
+            scheduler_params['epochs'] = args.epochs/100
+            scheduler_params['steps_per_epoch'] = args.num_exp/args.batch_size
+            scheduler_params['pct_start'] = args.pct_start
+            scheduler_params['anneal_strategy'] = args.anneal_strategy
+
+        elif lr_scheduler_type == 'NoScheduler':
+            scheduler_params = None
+
+        return scheduler_params
+
+def get_param_groups(model, args):
+    """
+    Function to create group of the parameters for better visualization of the gradients
+    """
+    layers_name = []
+    for name, param in model.named_parameters():
+        if param.requires_grad:
+            layers_name.append(name)
+
+    # Initialize groups
+    NAM_features_bias = []
+    NAM_features_blocks = []
+    NAM_output_bias = []
+    NAM_output_blocks = []
+
+    # Iterate over layer names and classify them
+    for layer in layers_name:
+        if layer == 'NAM_features.bias':
+            NAM_features_bias.append(layer)
+        elif 'NAM_features.feature_nns' in layer:
+            block_idx = int(layer.split('.')[2])  # Extract the feature_nns block index
+            if args.featureNN_arch_phase1 == 'parallel_single_output':
+                sub_block_idx = int(layer.split('.')[4])  # Extract the sub-block index
+                while len(NAM_features_blocks) <= block_idx:
+                    NAM_features_blocks.append([])  # Add sublist for each output block
+                if len(NAM_features_blocks[block_idx]) <= sub_block_idx:
+                    NAM_features_blocks[block_idx].append([])  # Add sub-sublist for each output sub-block
+                NAM_features_blocks[block_idx][sub_block_idx].append(layer)
+            else:
+                if len(NAM_features_blocks) <= block_idx:
+                    NAM_features_blocks.append([])  # Add sublist for each feature block
+                NAM_features_blocks[block_idx].append(layer)
+        elif layer == 'NAM_output.bias':
+            NAM_output_bias.append(layer)
+        elif 'NAM_output.feature_nns' in layer:
+            block_idx = int(layer.split('.')[2])  # Extract the output feature_nns block index
+            if args.featureNN_arch_phase2 == 'parallel_single_output':
+                sub_block_idx = int(layer.split('.')[4])  # Extract the sub-block index
+                while len(NAM_output_blocks) <= block_idx:
+                    NAM_output_blocks.append([])  # Add sublist for each output block
+                if len(NAM_output_blocks[block_idx]) <= sub_block_idx:
+                    NAM_output_blocks[block_idx].append([])  # Add sub-sublist for each output sub-block
+                NAM_output_blocks[block_idx][sub_block_idx].append(layer)
+            else:
+                if len(NAM_output_blocks) <= block_idx:
+                    NAM_output_blocks.append([])  # Add sublist for each feature block
+                NAM_output_blocks[block_idx].append(layer)
+    
+    # Final Groups
+    if args.hierarch_net:
+        groups = {
+            "NAM_features_bias": [NAM_features_bias],
+            "NAM_features_blocks": NAM_features_blocks,
+            "NAM_output_bias": [NAM_output_bias],
+            "NAM_output_blocks": NAM_output_blocks
+        }
+    else:
+        groups = {
+            "NAM_features_bias": [NAM_features_bias],
+            "NAM_features_blocks": NAM_features_blocks,
+        }
+
+    all_groups = {}
+    for group_name, group_content in groups.items():
+        count = 0
+        for content in group_content:
+            
+            if len(content) == 2:
+                for i in range(len(content)):
+                    all_groups[f'{group_name}_{count}_for_outpot_{i}'] = content[i]
+            else:
+                all_groups[f'{group_name}_{count}'] = content
+            count += 1 
+    return all_groups

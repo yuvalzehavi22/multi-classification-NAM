@@ -424,12 +424,16 @@ class Trainer:
     # Function to plot gradient norms
     def _plot_gradients(self, grad_norms, all_groups):
         for group_name, group_content in all_groups.items():
-
             fig = go.Figure()
-
             for layer in group_content:
-                grad_values = [grad_norms[epoch][layer] for epoch in grad_norms]
-                fig.add_trace(go.Scatter(x=list(grad_norms.keys()), y=grad_values, mode='lines', name=layer))
+                if isinstance(layer, list):
+                    # Check if 'layer' is a list - for 'parallel_single_output' arch
+                    for sub_layer in layer:  
+                        grad_values = [grad_norms[epoch][sub_layer] for epoch in grad_norms]
+                        fig.add_trace(go.Scatter(x=list(grad_norms.keys()), y=grad_values, mode='lines', name=sub_layer))
+                else:
+                    grad_values = [grad_norms[epoch][layer] for epoch in grad_norms]
+                    fig.add_trace(go.Scatter(x=list(grad_norms.keys()), y=grad_values, mode='lines', name=layer))
 
             fig.update_layout(
                 title=f"Gradient Norms - {group_name}",
@@ -445,7 +449,7 @@ class Trainer:
                 )
             )
 
-            #fig.show()
+            # fig.show()
             # Log the figure to W&B
             wandb.log({f"Gradient Norms Plot: {group_name}": fig})
 

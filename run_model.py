@@ -142,6 +142,7 @@ def main():
     # Run the training phase
     train_loss_history, val_loss_history = trainer.train(args, train_loader, all_param_groups, val_loader)
 
+    # # For hyperparam tunningy
     # val_loss_data = {"val_loss": val_loss_history[-1]}
     # with open("val_loss.json", "w") as f:
     #     json.dump(val_loss_data, f)

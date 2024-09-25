@@ -419,7 +419,7 @@ class Trainer:
         grad_norms[epoch] = {}
         for name, param in self.model.named_parameters():
             if param.requires_grad and param.grad is not None: #and name in layers_to_track 
-                grad_norms[epoch][name] = param.grad.norm().item()
+               grad_norms[epoch][name] = param.grad.norm().item()
     
     # Function to plot gradient norms
     def _plot_gradients(self, grad_norms, all_groups):

@@ -205,7 +205,7 @@ class SyntheticDatasetGenerator:
             Generated target values for Phase 2.
         """
         if is_test:
-            x_values = torch.linspace(0, 3, X_input.size(0)).reshape(-1, 1)  # 100 points between -1 and 1
+            x_values = torch.linspace(0, round(float(X_input.max())), X_input.size(0)).reshape(-1, 1)  # 100 points between -1 and 1
             X_input = x_values.repeat(1, X_input.size(1))
 
         # Creating a dict to save all the true shape functions 
@@ -225,7 +225,7 @@ class SyntheticDatasetGenerator:
         # creating y_1
         shape_functions['f_1_0'] = 0.2*X_input[:, 0]
         shape_functions['f_1_1'] = (1/3)*X_input[:, 1]
-        shape_functions['f_1_2'] =  0.2*(X_input[:, 2] ** 2) #0.5*X_input[:, 2] # 0.5*torch.exp(0.25 * X_input[:, 2]) #
+        shape_functions['f_1_2'] =  0.1*(X_input[:, 2] ** 2) #0.5*X_input[:, 2] # 0.5*torch.exp(0.25 * X_input[:, 2]) #
         shape_functions['f_1_3'] = (2/3)*X_input[:, 3] # 0.5 * (X_input[:, 3] ** 2) #
         y_1 = shape_functions['f_1_0'] + shape_functions['f_1_1'] + shape_functions['f_1_2'] + shape_functions['f_1_3']
         y_1 = y_1.reshape(-1, 1)

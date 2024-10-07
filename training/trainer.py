@@ -276,6 +276,9 @@ class Trainer:
 
         # Add L1, L2 regularization and Monotonicity Penalty for phase 1
         #loss += l1_penalty(self.model, self.l1_lambda_phase1)
+        params = [param for name, param in self.model.named_parameters() if 'multi_output_layer' in name]
+        l1_penalty_phase1_arch = l1_penalty(params, self.l1_lambda_phase1)
+
         l1_penalty_phase1 = l1_penalty(phase1_gams_out, self.l1_lambda_phase1)
         l2_penalty_phase1 = l2_penalty(phase1_gams_out, self.l2_lambda_phase1)
         mono_penalty_phase1 = monotonic_penalty(X, logits, self.monotonicity_lambda_phase1)
@@ -286,7 +289,7 @@ class Trainer:
             print('l2_penalty:', l2_penalty_phase1)
             print('monotonic_penalty:', mono_penalty_phase1)
         
-        loss = loss + l1_penalty_phase1 + l2_penalty_phase1 + mono_penalty_phase1
+        loss = loss + l1_penalty_phase1_arch + l1_penalty_phase1 + l2_penalty_phase1 + mono_penalty_phase1
 
         # Add L1, L2 regularization and Monotonicity Penalty for phase 2 if applicable
         if phase2_gams_out is not None:

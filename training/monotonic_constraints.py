@@ -33,8 +33,14 @@ class MonotonicityEnforcer:
         for feature_matrix in sorted_matrices:
             for logits_idx in range(1, feature_matrix.size(0)):  # Iterate over logits rows
                 logits_values = feature_matrix[logits_idx, :]
-                diffs = logits_values[:-1] - logits_values[1:]  # Differences between consecutive values
-                penalty = F.relu(diffs).sum()  # Penalize differences
+                # diffs = logits_values[:-1] - logits_values[1:]  # Differences between consecutive values
+                # penalty = F.relu(diffs).sum()  # Penalize differences
+                diffs = logits_values[1:] - logits_values[:-1]  # Differences between consecutive values
+                
+                # Identify monotonicity violations
+                violations = (diffs < 0).float() * (diffs > 0).float()  # Penalize if signs flip
+                penalty = violations.sum()
+
                 total_penalty += penalty
 
         # Normalize penalty by the number of examples

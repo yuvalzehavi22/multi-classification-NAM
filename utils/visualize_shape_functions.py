@@ -90,17 +90,18 @@ def get_shape_functions_synthetic_data(model, args, num_test_exp=1000, only_phas
     _, y_phase1, shape_functions_phase1 = SyntheticDatasetGenerator.get_synthetic_data_phase1(num_test_exp, args.in_features, is_test=True)
     _, shape_functions_phase2 = SyntheticDatasetGenerator.get_synthetic_data_phase2(y_phase1, is_test=True)
 
-    x_values = torch.linspace(0, 3, num_test_exp).reshape(-1, 1)
+    x_values_phase1 = torch.linspace(0, 3, num_test_exp).reshape(-1, 1)
+    x_values_phase2 = torch.linspace(0, round(float(y_phase1.max())), num_test_exp).reshape(-1, 1)
 
     if not only_phase2:
         input_dim = args.in_features
         output_dim = args.latent_dim
-        visualize_combined_gam(model, x_values, input_dim, output_dim, shape_functions_phase1, vis_lat_features=True)
+        visualize_combined_gam(model, x_values_phase1, input_dim, output_dim, shape_functions_phase1, vis_lat_features=True)
 
     if args.hierarch_net or only_phase2:
         input_dim = args.latent_dim
         output_dim = args.output_dim
-        visualize_combined_gam(model, x_values, input_dim, output_dim, shape_functions_phase2)
+        visualize_combined_gam(model, x_values_phase2, input_dim, output_dim, shape_functions_phase2)
     
     return
 

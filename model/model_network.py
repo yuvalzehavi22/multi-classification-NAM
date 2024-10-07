@@ -251,8 +251,8 @@ class FeatureNN(torch.nn.Module):
                                         monotonic_constraint = self.monotonic_constraint,
                                         )
             
-            self.output_layer = torch.nn.Linear(1, self.num_classes, bias=False)
-            torch.nn.init.xavier_uniform_(self.output_layer.weight)
+            self.multi_output_layer = torch.nn.Linear(1, self.num_classes, bias=False)
+            torch.nn.init.xavier_uniform_(self.multi_output_layer.weight)
         
         else:
             raise NotImplementedError(f"{self.architecture_type} architecture type is not implemented.")
@@ -271,7 +271,7 @@ class FeatureNN(torch.nn.Module):
         elif self.architecture_type == 'single_to_multi_output':
             single_output = self.feature_nns(x)
             # Final output layer
-            outputs = self.output_layer(single_output)
+            outputs = self.multi_output_layer(single_output)
             
         return outputs
 

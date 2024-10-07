@@ -47,9 +47,12 @@ def parse_args():
             l2_lambda_phase2=0.0002,
             l1_lambda_phase1=0.0,
             l1_lambda_phase2=0.0,
-            eval_every=100,
+            monotonicity_lambda_phase1=0.0,
+            monotonicity_lambda_phase2=0.0,
+            track_gradients = 0,
+            eval_every=50,
             early_stop_delta=0.0,
-            early_stop_patience=30,
+            early_stop_patience=200,
             monitor="val_loss",
             optimizer="Adam",
             lr_scheduler="NoScheduler",
@@ -233,7 +236,8 @@ def parse_args():
         parser.add_argument("--l2_lambda_phase2",type=float, default=0.0, help="l2 regularization for the gams outputs of phase2")
         parser.add_argument("--l1_lambda_phase1",type=float, default=0.0, help="l1 regularization for the gams outputs of phase1")
         parser.add_argument("--l1_lambda_phase2",type=float, default=0.0, help="l1 regularization for the gams outputs of phase2")
-        parser.add_argument("--monotonicity_lambda",type=float, default=0.0, help="Parameter to controls the strength of the monotonicity constraint")
+        parser.add_argument("--monotonicity_lambda_phase1",type=float, default=0.0, help="Parameter to controls the strength of the monotonicity constraint - Phase1")
+        parser.add_argument("--monotonicity_lambda_phase2",type=float, default=0.0, help="Parameter to controls the strength of the monotonicity constraint - Phase2")
 
         parser.add_argument('--eval_every', type=int, default=50, help='Evaluate every N epochs')
         parser.add_argument('--early_stop_delta', type=float, default=0.0, help='Min delta for early stopping')

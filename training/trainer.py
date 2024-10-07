@@ -92,7 +92,8 @@ class Trainer:
                  l1_lambda_phase2: float = 0.,
                  l2_lambda_phase1: float = 0.,
                  l2_lambda_phase2: float = 0.,
-                 monotonicity_lambda: float = 0.,
+                 monotonicity_lambda_phase1: float = 0.,
+                 monotonicity_lambda_phase2: float = 0.,
                  eval_every: int = 1,
                  early_stop_delta: float =0.001,
                  early_stop_patience: int =10,
@@ -110,7 +111,8 @@ class Trainer:
         self.l2_lambda_phase1 = l2_lambda_phase1
         self.l1_lambda_phase2 = l1_lambda_phase2
         self.l2_lambda_phase2 = l2_lambda_phase2
-        self.monotonicity_lambda = monotonicity_lambda
+        self.monotonicity_lambda_phase1 = monotonicity_lambda_phase1
+        self.monotonicity_lambda_phase2 = monotonicity_lambda_phase2
         self.eval_every = eval_every
         self.early_stop_delta = early_stop_delta
         self.early_stop_patience = early_stop_patience
@@ -183,8 +185,8 @@ class Trainer:
                 if val_loss < self.best_val_loss - self.early_stop_delta:
                     self.best_val_loss = val_loss
                     self.early_stop_counter = 0
-                    self.save_model("best_model.pt")
-                    wandb.save(f"model_epoch_{epoch}.pt")
+                    # self.save_model("best_model.pt")
+                    # wandb.save(f"model_epoch_{epoch}.pt")
                 else:
                     self.early_stop_counter += 1
                     if self.early_stop_counter >= self.early_stop_patience:
@@ -203,6 +205,14 @@ class Trainer:
                     print(f"Epoch {epoch} | Total Loss: {epoch_loss:.5f}")
                     # Log metrics to W&B
                     wandb.log({"Epoch": epoch, "Training loss": epoch_loss})
+            
+        # Save the final model after training
+        self.save_model("final_model.pt")
+
+        # Log the final model to W&B as an artifact
+        artifact = wandb.Artifact('final_model', type='model')
+        artifact.add_file('final_model.pt')
+        wandb.log_artifact(artifact)
         
         if all_param_groups:
             # Plot the gradients at the end of training and log the plot to W&B
@@ -264,18 +274,27 @@ class Trainer:
         
         loss = self.criterion(logits.view(-1), y.view(-1))
 
-        # Add L1 and L2 regularization for phase 1
+        # Add L1, L2 regularization and Monotonicity Penalty for phase 1
         #loss += l1_penalty(self.model, self.l1_lambda_phase1)
-        loss += l1_penalty(phase1_gams_out, self.l1_lambda_phase1)
-        loss += l2_penalty(phase1_gams_out, self.l2_lambda_phase1)
+        l1_penalty_phase1 = l1_penalty(phase1_gams_out, self.l1_lambda_phase1)
+        l2_penalty_phase1 = l2_penalty(phase1_gams_out, self.l2_lambda_phase1)
+        mono_penalty_phase1 = monotonic_penalty(X, logits, self.monotonicity_lambda_phase1)
 
-        # Add L1 and L2 regularization for phase 2 if applicable
+        if 0:
+            print('MSE loss:', loss)
+            print('l1_penalty:', l1_penalty_phase1)
+            print('l2_penalty:', l2_penalty_phase1)
+            print('monotonic_penalty:', mono_penalty_phase1)
+        
+        loss = loss + l1_penalty_phase1 + l2_penalty_phase1 + mono_penalty_phase1
+
+        # Add L1, L2 regularization and Monotonicity Penalty for phase 2 if applicable
         if phase2_gams_out is not None:
-            loss += l1_penalty(phase2_gams_out, self.l1_lambda_phase2)
-            loss += l2_penalty(phase2_gams_out, self.l2_lambda_phase2)
+            l1_penalty_phase2 = l1_penalty(phase2_gams_out, self.l1_lambda_phase2)
+            l2_penalty_phase2 = l2_penalty(phase2_gams_out, self.l2_lambda_phase2)
+            mono_penalty_phase2 = monotonic_penalty(latent_features, logits, self.monotonicity_lambda_phase2)
 
-            # Add Monotonicity Penalty
-            loss += monotonic_penalty(latent_features, logits, self.monotonicity_lambda)
+            loss = loss + l1_penalty_phase2 + l2_penalty_phase2 + mono_penalty_phase2
 
         # Backward pass and optimization step
         self.optimizer.zero_grad()
@@ -469,6 +488,7 @@ class Trainer:
         path : str
             File path to save the model.
         """
+        
         torch.save(self.model.state_dict(), path)
         #print(f"Model saved to {path}")
 

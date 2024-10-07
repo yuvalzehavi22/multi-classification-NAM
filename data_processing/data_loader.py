@@ -156,28 +156,28 @@ class SyntheticDatasetGenerator:
                 shape_functions[f"f_{j}_{i}"] = torch.zeros(num_exp)
 
         # creating y_0
-        shape_functions['f_0_0'] = (3/2)*X[:, 0]
-        shape_functions['f_0_1'] = (1/4)*(X[:, 2]**3)
-        shape_functions['f_0_2'] = (1/3)*(X[:, 1]**2)
+        shape_functions['f_0_0'] = (2/3)*X[:, 0]
+        shape_functions['f_0_1'] = (1/6)*(X[:, 1]**3)
+        shape_functions['f_0_2'] = (1/4)*(X[:, 2]**2)
         y_0 = shape_functions['f_0_0'] + shape_functions['f_0_1'] + shape_functions['f_0_2']
         y_0 = y_0.reshape(-1, 1)
         
         # creating y_1
-        shape_functions['f_1_5'] = 5*torch.exp(-4 * X[:, 7].abs())
-        shape_functions['f_1_6'] = 2*torch.cos(5 * X[:, 6])
-        y_1 = shape_functions['f_1_5'] + shape_functions['f_1_6']
+        shape_functions['f_1_7'] = (1/5)*torch.exp(X[:, 7].abs())
+        shape_functions['f_1_6'] = 2*(torch.cos(4 * X[:, 6])+1)
+        y_1 = shape_functions['f_1_7'] + shape_functions['f_1_6']
         y_1 = y_1.reshape(-1, 1)
         
         # creating y_2
-        shape_functions['f_2_7'] = (2/3)*torch.log(100 * X[:, 5].abs()+1)
-        shape_functions['f_2_8'] = (5/2)*(torch.sin(5 * X[:, 8])+1)
-        y_2 = shape_functions['f_2_7'] + shape_functions['f_2_8']
+        shape_functions['f_2_5'] = (2/3)*torch.log(X[:, 5].abs()+1)
+        shape_functions['f_2_8'] = (3/2)*(torch.sin(5 * X[:, 8])+1)
+        y_2 = shape_functions['f_2_5'] + shape_functions['f_2_8']
         y_2 = y_2.reshape(-1, 1)
         
         # creating y_3
-        shape_functions['f_3_5'] = 3*torch.exp(-4 * X[:, 7].abs())
-        shape_functions['f_3_2'] = 0.5*(X[:, 2]**2)
-        y_3 = shape_functions['f_3_5'] + shape_functions['f_3_2']
+        shape_functions['f_3_7'] = (1/5)*torch.exp(X[:, 7].abs())
+        shape_functions['f_3_2'] = (1/4)*(X[:, 2]**2)
+        y_3 = shape_functions['f_3_7'] + shape_functions['f_3_2']
         y_3 = y_3.reshape(-1, 1)
         
         # Stack all y_i to form the final target matrix
@@ -215,14 +215,19 @@ class SyntheticDatasetGenerator:
                 shape_functions[f"f_{j}_{i}"] = torch.zeros(X_input.size(0))
 
         # creating y_0
-        shape_functions['f_0_0'] = X_input[:, 0]
-        shape_functions['f_0_2'] = 2*X_input[:, 2]
-        y_0 = shape_functions['f_0_0'] + shape_functions['f_0_2']
+        shape_functions['f_0_0'] = (1/3)*X_input[:, 0]
+        shape_functions['f_0_1'] = 0.2*torch.exp(0.25*X_input[:, 1]) #0.2*X_input[:, 1] # 
+        shape_functions['f_0_2'] = 0.5*X_input[:, 2] # torch.exp(X_input[:, 2]) #
+        shape_functions['f_0_3'] = 0.4*X_input[:, 3]
+        y_0 = shape_functions['f_0_0'] + shape_functions['f_0_1'] + shape_functions['f_0_2'] + shape_functions['f_0_3']
         y_0 = y_0.reshape(-1, 1)
         
         # creating y_1
-        shape_functions['f_1_1'] = 3*X_input[:, 1]
-        y_1 = shape_functions['f_1_1']
+        shape_functions['f_1_0'] = 0.2*X_input[:, 0]
+        shape_functions['f_1_1'] = (1/3)*X_input[:, 1]
+        shape_functions['f_1_2'] =  0.2*(X_input[:, 2] ** 2) #0.5*X_input[:, 2] # 0.5*torch.exp(0.25 * X_input[:, 2]) #
+        shape_functions['f_1_3'] = (2/3)*X_input[:, 3] # 0.5 * (X_input[:, 3] ** 2) #
+        y_1 = shape_functions['f_1_0'] + shape_functions['f_1_1'] + shape_functions['f_1_2'] + shape_functions['f_1_3']
         y_1 = y_1.reshape(-1, 1)
         
         # Stack all y_i to form the final target matrix

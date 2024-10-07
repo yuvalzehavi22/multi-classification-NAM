@@ -122,6 +122,9 @@ class FeatureNN_Base(torch.nn.Module):
 
             # Initialize the output layer
             self._initialize_output_layer(in_units)
+        
+        else:
+            self._initialize_output_layer(self.num_units)
 
 
     def _initialize_output_layer(self, in_units: int):
@@ -138,8 +141,9 @@ class FeatureNN_Base(torch.nn.Module):
                                                              group_size=min(self.activation_function_group_size, self.num_classes),
                                                              monotonic_constraint=self.monotonic_constraint)
         else:
-            self.output_layer = torch.nn.Linear(in_units, self.num_classes, bias=False)
+            self.output_layer = torch.nn.Linear(in_units, self.num_classes, bias=True)
             torch.nn.init.xavier_uniform_(self.output_layer.weight)
+            torch.nn.init.constant_(self.output_layer.bias, 0.01)#torch.nn.init.zeros_(self.output_layer.bias)
 
 
     def forward(self, x):
@@ -153,9 +157,8 @@ class FeatureNN_Base(torch.nn.Module):
 
         # Final output layer
         outputs = self.output_layer(x)
-        
         return outputs
-    
+
 
 # FeatureNN block type Class
 class FeatureNN(torch.nn.Module):
@@ -366,6 +369,8 @@ class NeuralAdditiveModel(torch.nn.Module):
         if self.feature_dropout_val > 0.0:
             f_out = self.feature_dropout(f_out)
 
+        # print(f_out.sum(axis=-1).shape)
+        # print(self.bias.shape)
         outputs = f_out.sum(axis=-1) + self.bias #if I want positive bias: F.relu(self.bias)
         
         return outputs, f_out

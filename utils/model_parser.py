@@ -79,7 +79,7 @@ def parse_args():
             '--WB_project_name', 
             type=str, 
             default="Hirarchial GAMs", 
-            help="options:'Hirarchial_GAMs-synt_data', 'GAMs-synt_data_phase1', 'GAMs-synt_data_phase2', 'Hirarchial_GAMs-classification'")
+            help="options:'Hirarchial_GAMs-synt_data', 'GAMs-synt_data_phase1', 'GAMs-synt_data_phase2', 'Hirarchial_GAMs-classification', 'Hirarchical_NAMs_hyperparam_optimization'")
         
         # ---------------------------------------------------------------
         # ----------------------- Data parameters -----------------------
@@ -394,6 +394,8 @@ def parse_args():
             default=None,
             help="Number of training iterations in the decreasing half of a cycle",
         )
+
+        parser.add_argument("--trial_id", type=str, help="Parameter for hyperparameter tunning")
 
         # ----------------------- save parameters -----------------------
         parser.add_argument(

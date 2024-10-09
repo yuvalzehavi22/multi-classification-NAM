@@ -102,6 +102,7 @@ class Trainer:
         
         self.model = model
         self.optimizer = self._set_optimizer(optimizer, learning_rate, weight_decay)
+        self.lr_scheduler_type = lr_scheduler
         self.lr_scheduler = self._set_lr_scheduler(self.optimizer, lr_scheduler, scheduler_params)
         self.eval_metric = eval_metric
         self.epochs = epochs
@@ -152,8 +153,6 @@ class Trainer:
         val_loader : DataLoader, optional
             DataLoader for the validation set (for early stopping).
         """
-        # # Initialize W&B run and log the parameters
-        # wandb.init(project="Hirarchial GAMs", config=args)
 
         train_loss_history = []
         val_loss_history = []
@@ -168,11 +167,7 @@ class Trainer:
             # Track and log gradients
             self._track_gradients(grad_norms, epoch)
             #self._log_gradients_wandb(grad_norms, epoch)
-           
-            if self.lr_scheduler:
-                self.lr_scheduler.step()
 
-            # Early Stopping Check
             if val_loader:
                 val_loss, rmse = self.validate(val_loader)
                 val_loss_history.append(val_loss)
@@ -181,26 +176,30 @@ class Trainer:
                     print(f"Epoch {epoch} | Total Loss: {epoch_loss:.5f} | Validation Loss: {val_loss:.5f}")
                     # Log metrics to W&B
                     wandb.log({"Epoch": epoch, "Training loss": epoch_loss, "Validation Loss": val_loss, "Validation RMSE": rmse})
+                
+                if self.lr_scheduler:
+                    if self.lr_scheduler_type == 'ReduceLROnPlateau':  
+                        # Adjust learning rate based on val_loss
+                        self.lr_scheduler.step(val_loss)
+                    else:
+                        self.lr_scheduler.step()
 
+                # Early Stopping Check
                 if val_loss < self.best_val_loss - self.early_stop_delta:
                     self.best_val_loss = val_loss
                     self.early_stop_counter = 0
-                    # self.save_model("best_model.pt")
+                    self.save_model("best_model.pt")
                     # wandb.save(f"model_epoch_{epoch}.pt")
                 else:
                     self.early_stop_counter += 1
                     if self.early_stop_counter >= self.early_stop_patience:
-                        print("Early stopping triggered!")
+                        print(f"Early stopping triggered at epoch {epoch}! Restoring best model...")
+                        #self.load_model("best_model.pt")  # Load the best model before stopping
                         break
-
-                # # Learning rate scheduler step (if using ReduceLROnPlateau, pass validation loss)
-                # if self.lr_scheduler:
-                #     if isinstance(self.lr_scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
-                #         self.lr_scheduler.step(val_loss)
-                #     else:
-                #         self.lr_scheduler.step()
-            
             else:
+                if self.lr_scheduler:
+                    self.lr_scheduler.step()
+
                 if epoch % self.eval_every == 0:
                     print(f"Epoch {epoch} | Total Loss: {epoch_loss:.5f}")
                     # Log metrics to W&B
@@ -273,7 +272,10 @@ class Trainer:
             phase2_gams_out = None
         
         loss = self.criterion(logits.view(-1), y.view(-1))
-
+        print('y shape:', y.shape)
+        print('logits shape:', logits.shape)
+        print(logits.view(-1)-y.view(-1))
+        print(torch.mean(logits.view(-1)-y.view(-1)))
         # Add L1, L2 regularization and Monotonicity Penalty for phase 1
         #loss += l1_penalty(self.model, self.l1_lambda_phase1)
         params = [param for name, param in self.model.named_parameters() if 'multi_output_layer' in name]

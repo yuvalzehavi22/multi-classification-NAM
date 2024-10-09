@@ -18,8 +18,6 @@ class FeatureNN_Base(torch.nn.Module):
                  shallow: bool = True,
                  first_layer: str = 'ReLU',
                  hidden_layer: str = 'ReLU',
-                #  first_layer: ActivationLayer = ExULayer,
-                #  hidden_layer: ActivationLayer = ReLULayer,          #ReLU, ExU, LipschitzMonotonic, ExU_ReLU
                  num_classes: int = 1,
                  weight_norms_kind: str = "one-inf", 
                  group_size: int = 2, 

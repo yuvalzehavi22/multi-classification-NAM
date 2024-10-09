@@ -145,7 +145,7 @@ def main():
 
     # # For hyperparam tunningy
     # val_loss_data = {"val_loss": val_loss_history[-1]}
-    # with open("val_loss.json", "w") as f:
+    # with open(f"val_loss_trial_{args.trial_id}.json", "w") as f:
     #     json.dump(val_loss_data, f)
 
     # print loss curves

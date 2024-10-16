@@ -39,13 +39,13 @@ def main():
     seed_everything(args.seed)
 
     # DATA PROCESSING: Generate synthetic data for Phase 1 and Phase 2
-    X, y_phase1, _ = SyntheticDatasetGenerator.get_synthetic_data_phase1(args.num_exp, args.in_features)
+    X, y_phase1, _, out_weights = SyntheticDatasetGenerator.get_synthetic_data_phase1(args.num_exp, args.in_features)
     y_phase2, _ = SyntheticDatasetGenerator.get_synthetic_data_phase2(y_phase1)
 
     SyntheticDataset= True
     if SyntheticDataset:
         # Generate synthetic data for validation set
-        X_val, y_phase1_val, _ = SyntheticDatasetGenerator.get_synthetic_data_phase1(10000, args.in_features)
+        X_val, y_phase1_val, _, _ = SyntheticDatasetGenerator.get_synthetic_data_phase1(10000, args.in_features)
         y_phase2_val, _ = SyntheticDatasetGenerator.get_synthetic_data_phase2(y_phase1_val)
 
         if args.hierarch_net:
@@ -141,7 +141,10 @@ def main():
         all_param_groups=None
         
     # Run the training phase
-    train_loss_history, val_loss_history = trainer.train(args, train_loader, all_param_groups, val_loader)
+    # Toy Problem
+    train_loss_history, val_loss_history = trainer.train(loader=train_loader, all_param_groups=all_param_groups)
+
+    #train_loss_history, val_loss_history = trainer.train(loader=train_loader, all_param_groups=all_param_groups, val_loader=val_loader)
 
     # # For hyperparam tunningy
     # val_loss_data = {"val_loss": val_loss_history[-1]}
@@ -169,4 +172,4 @@ if __name__ == "__main__":
 #python run_model.py --seed 42 --eval_every 50 --featureNN_arch_phase1 'single_to_multi_output' --featureNN_arch_phase2 'parallel_single_output' --learning_rate 0.0001 --epochs 1000 --l1_lambda_phase1 1e-5 --l1_lambda_phase2 1e-6
 #python run_model.py --seed 42 --eval_every 50 --featureNN_arch_phase1 'single_to_multi_output' --featureNN_arch_phase2 'parallel_single_output' --learning_rate 0.0001 --epochs 1000 --l1_lambda_phase1 1e-8 --l1_lambda_phase2 1e-7 --monotonicity_lambda 1e-6
 #python run_model.py --seed 42 --eval_every 50 --featureNN_arch_phase1 'single_to_multi_output' --featureNN_arch_phase2 'parallel_single_output' --learning_rate 0.0005 --epochs 1000 --l1_lambda_phase1 1e-8 --l1_lambda_phase2 1e-7 --monotonicity_lambda 1e-6 --first_hidden_dim_phase2 64 --hidden_dim_phase2 64 32 --first_activate_layer_phase2 "ReLU" --hidden_activate_layer_phase2 "ReLU"
-#python run_model.py --seed 42 --eval_every 50 --learning_rate 0.001 --epochs 1000 --hierarch_net 0 --featureNN_arch_phase1 'single_to_multi_output' --batch_size 1024 --lr_scheduler 'StepLR' --l2_lambda_phase1 1e-6
+#python run_model.py --seed 42 --eval_every 50 --learning_rate 0.001 --epochs 1000 --hierarch_net 0 --featureNN_arch_phase1 'single_to_multi_output' --batch_size 32 --lr_scheduler 'StepLR' --l2_lambda_phase1 1e-6

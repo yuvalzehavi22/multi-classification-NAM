@@ -4,7 +4,9 @@ from torch.distributions.uniform import Uniform
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-
+import plotly.express as px
+import plotly.graph_objects as go
+import os
 
 class TorchDataset(Dataset):
     """
@@ -151,50 +153,69 @@ class SyntheticDatasetGenerator:
         
         # Creating a dict to save all the true shape functions 
         shape_functions = {}
+        out_weights={}
         for j in range(4):
             for i in range(in_features):
                 shape_functions[f"f_{j}_{i}"] = torch.zeros(num_exp)
+                out_weights[f"f_{j}_{i}"] = 0
 
         # creating y_0
-        shape_functions['f_0_0'] = (2/3)*X[:, 0]
-        shape_functions['f_0_1'] = (1/6)*(X[:, 1]**3)
-        shape_functions['f_0_2'] = (1/4)*(X[:, 2]**2)
-        y_0 = shape_functions['f_0_0'] + shape_functions['f_0_1'] + shape_functions['f_0_2']
-        y_0 = y_0.reshape(-1, 1)
+        out_weights['f_0_0'] = 2/3
+        out_weights['f_0_1'] = 1/6
+        out_weights['f_0_2'] = 1/4
+
+        shape_functions['f_0_0'] = out_weights['f_0_0']*X[:, 0]
+        shape_functions['f_0_1'] = out_weights['f_0_1']*(X[:, 1]**3)
+        shape_functions['f_0_2'] = out_weights['f_0_2']*(X[:, 2]**2)
+
+        concept_0 = shape_functions['f_0_0'] + shape_functions['f_0_1'] + shape_functions['f_0_2']
+        concept_0 = concept_0.reshape(-1, 1)
         
         # creating y_1
-        shape_functions['f_1_7'] = (1/5)*torch.exp(X[:, 7].abs())
-        shape_functions['f_1_6'] = 2*(torch.cos(4 * X[:, 6])+1)
-        y_1 = shape_functions['f_1_7'] + shape_functions['f_1_6']
-        y_1 = y_1.reshape(-1, 1)
+        out_weights['f_1_7'] = 1/5
+        out_weights['f_1_6'] = 2
+
+        shape_functions['f_1_7'] = out_weights['f_1_7']*torch.exp(X[:, 7].abs())
+        shape_functions['f_1_6'] = out_weights['f_1_6']*(torch.cos(4 * X[:, 6])+1)
+
+        concept_1 = shape_functions['f_1_7'] + shape_functions['f_1_6']
+        concept_1 = concept_1.reshape(-1, 1)
         
         # creating y_2
-        shape_functions['f_2_5'] = (2/3)*torch.log(X[:, 5].abs()+1)
-        shape_functions['f_2_8'] = (3/2)*(torch.sin(5 * X[:, 8])+1)
-        y_2 = shape_functions['f_2_5'] + shape_functions['f_2_8']
-        y_2 = y_2.reshape(-1, 1)
+        out_weights['f_2_5'] = 2/3
+        out_weights['f_2_8'] = 3/2
+
+        shape_functions['f_2_5'] = out_weights['f_2_5']*torch.log(X[:, 5].abs()+1)
+        shape_functions['f_2_8'] = out_weights['f_2_8']*(torch.sin(5 * X[:, 8])+1)
+
+        concept_2 = shape_functions['f_2_5'] + shape_functions['f_2_8']
+        concept_2 = concept_2.reshape(-1, 1)
         
         # creating y_3
-        shape_functions['f_3_7'] = (1/5)*torch.exp(X[:, 7].abs())
-        shape_functions['f_3_2'] = (1/4)*(X[:, 2]**2)
-        y_3 = shape_functions['f_3_7'] + shape_functions['f_3_2']
-        y_3 = y_3.reshape(-1, 1)
+        out_weights['f_3_7'] = 1/5
+        out_weights['f_3_2'] = 1/4
+
+        shape_functions['f_3_7'] = out_weights['f_3_7']*torch.exp(X[:, 7].abs())
+        shape_functions['f_3_2'] = out_weights['f_3_2']*(X[:, 2]**2)
+        
+        concept_3 = shape_functions['f_3_7'] + shape_functions['f_3_2']
+        concept_3 = concept_3.reshape(-1, 1)
         
         # Stack all y_i to form the final target matrix
-        y = torch.cat([y_0 ,y_1, y_2, y_3], dim=1)
-        print(y.shape)
-        
-        return X, y, shape_functions
+        concepts = torch.cat([concept_0 ,concept_1, concept_2, concept_3], dim=1)
+        print(concepts.shape)
+
+        return X, concepts, shape_functions, out_weights
 
     @staticmethod
-    def get_synthetic_data_phase2(X_input, is_test=False):
+    def get_synthetic_data_phase2(concepts, is_test=False):
         """
         Generate synthetic target values for Phase 2 using input features.
         
         Parameters:
         -----------
-        X_input : torch.Tensor
-            Input features for generating synthetic targets.
+        concepts : torch.Tensor
+            Input for the layer - the concepts for generating synthetic targets.
         
         is_test : bool
             generate data for testing the results.
@@ -205,28 +226,28 @@ class SyntheticDatasetGenerator:
             Generated target values for Phase 2.
         """
         if is_test:
-            x_values = torch.linspace(0, round(float(X_input.max())), X_input.size(0)).reshape(-1, 1)  # 100 points between -1 and 1
-            X_input = x_values.repeat(1, X_input.size(1))
+            x_values = torch.linspace(0, round(float(concepts.max())), concepts.size(0)).reshape(-1, 1)  # 100 points between -1 and 1
+            concepts = x_values.repeat(1, concepts.size(1))
 
         # Creating a dict to save all the true shape functions 
         shape_functions = {}
         for j in range(2):
-            for i in range(X_input.size(1)):
-                shape_functions[f"f_{j}_{i}"] = torch.zeros(X_input.size(0))
+            for i in range(concepts.size(1)):
+                shape_functions[f"f_{j}_{i}"] = torch.zeros(concepts.size(0))
 
         # creating y_0
-        shape_functions['f_0_0'] = (1/3)*X_input[:, 0]
-        shape_functions['f_0_1'] = 0.2*torch.exp(0.25*X_input[:, 1]) #0.2*X_input[:, 1] # 
-        shape_functions['f_0_2'] = 0.5*X_input[:, 2] # torch.exp(X_input[:, 2]) #
-        shape_functions['f_0_3'] = 0.4*X_input[:, 3]
+        shape_functions['f_0_0'] = (1/3)*concepts[:, 0]
+        shape_functions['f_0_1'] = 0.2*torch.exp(0.25*concepts[:, 1]) #0.2*X_input[:, 1] # 
+        shape_functions['f_0_2'] = 0.5*concepts[:, 2] # torch.exp(X_input[:, 2]) #
+        shape_functions['f_0_3'] = 0.4*concepts[:, 3]
         y_0 = shape_functions['f_0_0'] + shape_functions['f_0_1'] + shape_functions['f_0_2'] + shape_functions['f_0_3']
         y_0 = y_0.reshape(-1, 1)
         
         # creating y_1
-        shape_functions['f_1_0'] = 0.2*X_input[:, 0]
-        shape_functions['f_1_1'] = (1/3)*X_input[:, 1]
-        shape_functions['f_1_2'] =  0.1*(X_input[:, 2] ** 2) #0.5*X_input[:, 2] # 0.5*torch.exp(0.25 * X_input[:, 2]) #
-        shape_functions['f_1_3'] = (2/3)*X_input[:, 3] # 0.5 * (X_input[:, 3] ** 2) #
+        shape_functions['f_1_0'] = 0.2*concepts[:, 0]
+        shape_functions['f_1_1'] = (1/3)*concepts[:, 1]
+        shape_functions['f_1_2'] =  0.1*(concepts[:, 2] ** 2) #0.5*X_input[:, 2] # 0.5*torch.exp(0.25 * X_input[:, 2]) #
+        shape_functions['f_1_3'] = (2/3)*concepts[:, 3] # 0.5 * (X_input[:, 3] ** 2) #
         y_1 = shape_functions['f_1_0'] + shape_functions['f_1_1'] + shape_functions['f_1_2'] + shape_functions['f_1_3']
         y_1 = y_1.reshape(-1, 1)
         
@@ -260,3 +281,56 @@ class SyntheticDatasetGenerator:
         dataset = TensorDataset(X, y)
         loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
         return loader
+    
+    @staticmethod
+    def plot_data_histograms(values, values_name, nbins=50, save_path="data_processing/plots/"):
+        """
+        Plots histograms for each feature in the dataset and saves them as .html files for later exploration.
+
+        Parameters:
+        -----------
+        values : torch.Tensor
+            The input tensor containing feature values.
+        
+        values_name : str
+            The input type for the function. options: Input, Concept, Target
+
+        nbins : int, optional (default=50)
+            Number of bins for the histograms.
+        
+        save_path : str, optional (default='plots/')
+            The path where the plots will be saved.
+        """
+
+        # Convert values to a pandas DataFrame for easier handling
+        num_features = values.shape[1]
+        df = pd.DataFrame(values.numpy(), columns=[f'feature_{i}' for i in range(num_features)])
+
+        fig = go.Figure()
+
+        for i in range(num_features):
+            fig.add_trace(
+                go.Histogram(x=df[f'feature_{i}'], name=f'{values_name} {i}', opacity=0.75, nbinsx=nbins)
+            )
+
+        # Update layout
+        fig.update_layout(
+            title=f'Histograms of {values_name}s',
+            xaxis_title='Value',
+            yaxis_title='Frequency',
+            barmode='overlay',  # Overlay histograms
+            bargap=0.2,  # Gap between bars
+            showlegend=True
+        )
+
+        # Save plot as an HTML file
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+
+        plot_filename = os.path.join(save_path, f"{values_name}s_histograms.png")
+        fig.write_image(plot_filename)
+
+        print(f"Plot saved to {plot_filename}")
+
+        return fig
+    

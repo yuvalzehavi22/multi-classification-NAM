@@ -270,7 +270,7 @@ def parse_args():
             "--lr_scheduler",
             type=str,
             default="NoScheduler",
-            help="one of 'StepLR', 'ReduceLROnPlateau', 'CyclicLR' or 'OneCycleLR', NoScheduler",
+            help="one of 'StepLR', 'ReduceLROnPlateau', 'CyclicLR' or 'OneCycleLR', 'CosineAnnealingLR', NoScheduler",
         )
         # StepLR params
         parser.add_argument(

@@ -17,22 +17,15 @@ def l2_penalty(params, l2_lambda =0.):
     #print(l2_penalty_val)
     return l2_penalty_val
 
-# def l1_penalty(model, l1_lambda = 0.):
-#     # Add scaled L1 regularization term (normalized by the number of parameters)
-#     total_params = sum(p.numel() for p in model.parameters())
-#     l1_norm = sum(p.abs().sum() for p in model.parameters())
-
-#     # Monitor sparsity level
-#     # zero_params = sum((p == 0).sum().item() for p in model.parameters())
-#     # sparsity = zero_params / total_params * 100
-#     # print(f"Sparsity: {sparsity:.2f}% of parameters are zero")
-
-#     return (l1_lambda / total_params) * l1_norm
-
 def l1_penalty(params, l1_lambda = 0.):
     l1_norm = sum(p.abs().sum() for p in params)
     #normelaize
     total_params = sum(p.numel() for p in params)
+
+    # # Monitor sparsity level
+    # zero_params = sum((p == 0).sum().item() for p in params)
+    # sparsity = zero_params / total_params * 100
+    # print(f"Sparsity: {sparsity:.2f}% of parameters are zero")
 
     l1_penalty_val = l1_lambda*(l1_norm/total_params)
     return l1_penalty_val
@@ -96,13 +89,8 @@ def save_epoch_logs(epoch_logs: Dict,
 
 def set_lr_scheduler_params(args, lr_scheduler_type):
         """
-        Setup lr_scheduler_params
-        
-        Parameters:
-        -----------
-        args : 
+        Setup lr_scheduler_params 
             
-        
         Returns:
         --------
         scheduler_params : dict
@@ -113,6 +101,11 @@ def set_lr_scheduler_params(args, lr_scheduler_type):
         if lr_scheduler_type == 'StepLR':
             scheduler_params['step_size'] = args.StepLR_step_size
             scheduler_params['gamma'] = args.StepLR_gamma
+        
+        elif lr_scheduler_type == 'CosineAnnealingLR':
+            scheduler_params['T_max'] = args.epochs // 2
+            scheduler_params['eta_min'] = 0
+            scheduler_params['last_epoch'] = -1
 
         elif lr_scheduler_type == 'ReduceLROnPlateau':
             scheduler_params['mode'] = args.rop_mode

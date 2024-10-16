@@ -9,10 +9,10 @@ from tqdm import tqdm
 import numpy as np
 import torch
 import torch.nn as nn
+from torch.nn.functional import l1_loss
 import torch.nn.functional as F
 from typing import List, Any, Dict
 from torch.nn.utils import clip_grad_norm_
-from torch.optim.lr_scheduler import StepLR
 import wandb
 import plotly.graph_objects as go
 
@@ -122,10 +122,6 @@ class Trainer:
         # Defining device
         self.device = torch.device(define_device(device_name))
 
-        # Best validation loss for early stopping
-        self.best_val_loss = float('inf')
-        self.early_stop_counter = 0
-
         # Automatic loss function based on task type
         if loss_function is None:
             if self.model.task_type == 'binary_classification':
@@ -141,197 +137,156 @@ class Trainer:
         else:
             self.criterion = loss_function
         
-    def train(self, args, loader, all_param_groups=None, val_loader=None):
+    def train(self, loader, all_param_groups=None, val_loader=None):
         """
         Runs the training process.
-        
-        Parameters:
-        -----------
-        loader : DataLoader
-            DataLoader for the training set.
-        
-        val_loader : DataLoader, optional
-            DataLoader for the validation set (for early stopping).
         """
 
         train_loss_history = []
         val_loss_history = []
 
+        # Initialize variables for early stopping
+        best = float('inf')
+        early_stop_counter = 0
+
         # Initialize a dictionary to store gradient norms
         grad_norms = {}
 
         for epoch in tqdm(range(self.epochs)):
-            epoch_loss = self.train_epoch(loader)
-            train_loss_history.append(epoch_loss)  
+            self.model.train()
+            epoch_loss, epoch_mae, epoch_rmse = 0.0, 0.0, 0.0
+
+            # Training loop
+            for X, y in loader:
+                X, y = X.to(self.device), y.to(self.device)
+                self.optimizer.zero_grad()
+
+                # Forward pass
+                if self.model.hierarch_net:
+                    logits, latent_features, phase1_gams_out, phase2_gams_out = self.model(X)
+                else:
+                    logits, phase1_gams_out = self.model(X)
+                    latent_features, phase2_gams_out = None, None
+                
+                # Calculate loss
+                loss = self.criterion(logits.view(-1), y.view(-1))
+                mae = l1_loss(logits.view(-1), y.view(-1))  # MAE calculation
+                rmse = torch.sqrt(torch.mean((logits.view(-1) - y.view(-1)) ** 2))  # RMSE calculation
+                if 0:
+                    print('y shape:', y.shape)
+                    print('logits shape:', logits.shape)
+                    print(logits.view(-1)-y.view(-1))
+                    print(torch.mean(logits.view(-1)-y.view(-1)))
+
+                # Add L1, L2 regularization and Monotonicity Penalty for phase 1
+                params = [param for name, param in self.model.named_parameters() if 'multi_output_layer' in name]
+                l1_penalty_phase1_arch = l1_penalty(params, self.l1_lambda_phase1)
+
+                l1_penalty_phase1 = l1_penalty(phase1_gams_out, self.l1_lambda_phase1)
+                l2_penalty_phase1 = l2_penalty(phase1_gams_out, self.l2_lambda_phase1)
+                mono_penalty_phase1 = monotonic_penalty(X, logits, self.monotonicity_lambda_phase1)
+                loss += l1_penalty_phase1_arch + l1_penalty_phase1 + l2_penalty_phase1 + mono_penalty_phase1
+
+                # Add L1, L2 regularization and Monotonicity Penalty for phase 2 if applicable
+                if phase2_gams_out is not None:
+                    l1_penalty_phase2 = l1_penalty(phase2_gams_out, self.l1_lambda_phase2)
+                    l2_penalty_phase2 = l2_penalty(phase2_gams_out, self.l2_lambda_phase2)
+                    mono_penalty_phase2 = monotonic_penalty(latent_features, logits, self.monotonicity_lambda_phase2)
+                    loss += l1_penalty_phase2 + l2_penalty_phase2 + mono_penalty_phase2
+
+                # Backward pass and optimization step
+                loss.backward()
+
+                if self.clip_value:
+                    clip_grad_norm_(self.model.parameters(), self.clip_value)
+                
+                self.optimizer.step()
+
+                epoch_loss += loss.item()
+                epoch_mae += mae.item()
+                epoch_rmse += rmse.item()
+
+            # Calculate the average of the metrics for the current epoch
+            train_loss = epoch_loss / len(loader)
+            train_mae = epoch_mae / len(loader)
+            train_rmse = epoch_rmse / len(loader)
+
+            train_loss_history.append(train_loss)  
+
+            # Log losses and learning rate to W&B
+            wandb.log({
+                "epoch": epoch + 1,
+                "train_loss": train_loss,
+                "train_mae": train_mae,
+                "train_rmse": train_rmse,
+                "learning_rate": self.lr_scheduler.get_last_lr()[0]  # Log current learning rate
+            })
 
             # Track and log gradients
             self._track_gradients(grad_norms, epoch)
-            #self._log_gradients_wandb(grad_norms, epoch)
 
-            if val_loader:
-                val_loss, rmse = self.validate(val_loader)
+            if val_loader is not None:
+                val_loss, val_rmse, val_mae = self.validate(val_loader)
                 val_loss_history.append(val_loss)
-                
-                if epoch % self.eval_every == 0:
-                    print(f"Epoch {epoch} | Total Loss: {epoch_loss:.5f} | Validation Loss: {val_loss:.5f}")
-                    # Log metrics to W&B
-                    wandb.log({"Epoch": epoch, "Training loss": epoch_loss, "Validation Loss": val_loss, "Validation RMSE": rmse})
-                
+
                 if self.lr_scheduler:
                     if self.lr_scheduler_type == 'ReduceLROnPlateau':  
                         # Adjust learning rate based on val_loss
                         self.lr_scheduler.step(val_loss)
                     else:
                         self.lr_scheduler.step()
+                
+                if epoch % self.eval_every == 0:
+                    print(f"Epoch {epoch} | Total Loss: {epoch_loss:.5f} | Validation Loss: {val_loss:.5f}")
+                
+                # Log losses and learning rate to W&B
+                wandb.log({
+                    "epoch": epoch + 1,
+                    "val_loss": val_loss,
+                    "val_mae": val_mae,
+                    "val_rmse": val_rmse,
+                })
 
                 # Early Stopping Check
-                if val_loss < self.best_val_loss - self.early_stop_delta:
-                    self.best_val_loss = val_loss
-                    self.early_stop_counter = 0
+                if val_loss < best - self.early_stop_delta:
+                    best = val_loss
+                    early_stop_counter = 0
                     self.save_model("best_model.pt")
-                    # wandb.save(f"model_epoch_{epoch}.pt")
                 else:
-                    self.early_stop_counter += 1
-                    if self.early_stop_counter >= self.early_stop_patience:
-                        print(f"Early stopping triggered at epoch {epoch}! Restoring best model...")
-                        #self.load_model("best_model.pt")  # Load the best model before stopping
-                        break
+                    early_stop_counter += 1
+                
+                if early_stop_counter == self.early_stop_patience:
+                    print(f"Early stopping triggered at epoch {epoch}")
+                    break
+
             else:
                 if self.lr_scheduler:
                     self.lr_scheduler.step()
 
                 if epoch % self.eval_every == 0:
-                    print(f"Epoch {epoch} | Total Loss: {epoch_loss:.5f}")
-                    # Log metrics to W&B
-                    wandb.log({"Epoch": epoch, "Training loss": epoch_loss})
-            
-        # Save the final model after training
-        self.save_model("final_model.pt")
+                    print(f"Epoch {epoch} | Train Loss: {train_loss:.5f} | Train MAE: {train_mae:.5f} | Train RMSE: {train_rmse:.5f}")
 
+        if val_loader is None:
+            self.save_model("best_model.pt")        
+        
         # Log the final model to W&B as an artifact
-        artifact = wandb.Artifact('final_model', type='model')
-        artifact.add_file('final_model.pt')
+        artifact = wandb.Artifact('best_model', type='model')
+        artifact.add_file('best_model.pt')
         wandb.log_artifact(artifact)
         
         if all_param_groups:
             # Plot the gradients at the end of training and log the plot to W&B
             print('Plot the gradients at the end of training...')
             self._plot_gradients(grad_norms, all_param_groups)
-            #wandb.log({"Gradient Norms Plot": wandb.Image("gradient_norms.png")})
 
         return train_loss_history, val_loss_history
-    
-
-    def train_epoch(self, loader):
-        """
-        Performs one epoch of training.
-        
-        Parameters:
-        -----------
-        loader : DataLoader
-            DataLoader for the training set.
-        
-        Returns:
-        --------
-        avg_loss : float
-            Average loss for the epoch.
-        """
-        self.model.train()
-        epoch_loss = 0.0
-        
-        for X, y in loader:
-            loss = self.train_batch(X, y)
-            epoch_loss += loss
-
-        return epoch_loss / len(loader)
-
-    def train_batch(self, X, y):
-        """
-        Performs a single batch training step.
-        
-        Parameters:
-        -----------
-        X : torch.Tensor
-            Input features.
-        
-        y : torch.Tensor
-            Target values.
-        
-        Returns:
-        --------
-        loss : float
-            Computed loss for the batch.
-        """
-        X, y = X.to(self.device), y.to(self.device)
-        
-        # Forward pass
-        if self.model.hierarch_net:
-            logits, latent_features, phase1_gams_out, phase2_gams_out = self.model(X)
-        else:
-            logits, phase1_gams_out = self.model(X)
-            phase2_gams_out = None
-        
-        loss = self.criterion(logits.view(-1), y.view(-1))
-        print('y shape:', y.shape)
-        print('logits shape:', logits.shape)
-        print(logits.view(-1)-y.view(-1))
-        print(torch.mean(logits.view(-1)-y.view(-1)))
-        # Add L1, L2 regularization and Monotonicity Penalty for phase 1
-        #loss += l1_penalty(self.model, self.l1_lambda_phase1)
-        params = [param for name, param in self.model.named_parameters() if 'multi_output_layer' in name]
-        l1_penalty_phase1_arch = l1_penalty(params, self.l1_lambda_phase1)
-
-        l1_penalty_phase1 = l1_penalty(phase1_gams_out, self.l1_lambda_phase1)
-        l2_penalty_phase1 = l2_penalty(phase1_gams_out, self.l2_lambda_phase1)
-        mono_penalty_phase1 = monotonic_penalty(X, logits, self.monotonicity_lambda_phase1)
-
-        if 0:
-            print('MSE loss:', loss)
-            print('l1_penalty:', l1_penalty_phase1)
-            print('l2_penalty:', l2_penalty_phase1)
-            print('monotonic_penalty:', mono_penalty_phase1)
-        
-        loss = loss + l1_penalty_phase1_arch + l1_penalty_phase1 + l2_penalty_phase1 + mono_penalty_phase1
-
-        # Add L1, L2 regularization and Monotonicity Penalty for phase 2 if applicable
-        if phase2_gams_out is not None:
-            l1_penalty_phase2 = l1_penalty(phase2_gams_out, self.l1_lambda_phase2)
-            l2_penalty_phase2 = l2_penalty(phase2_gams_out, self.l2_lambda_phase2)
-            mono_penalty_phase2 = monotonic_penalty(latent_features, logits, self.monotonicity_lambda_phase2)
-
-            loss = loss + l1_penalty_phase2 + l2_penalty_phase2 + mono_penalty_phase2
-
-        # Backward pass and optimization step
-        self.optimizer.zero_grad()
-        loss.backward()
-
-        if self.clip_value:
-            clip_grad_norm_(self.model.parameters(), self.clip_value)
-        
-        self.optimizer.step()
-
-        return loss.item()
 
     def validate(self, val_loader):
         """
         Runs validation.
-        
-        Parameters:
-        -----------
-        val_loader : DataLoader
-            DataLoader for the validation set.
-        
-        Returns:
-        --------
-        val_loss : float
-            Validation loss.
         """
         self.model.eval()
-        val_loss = 0.0
-        rmse = 0.0
-
-        list_y_true = []
-        list_y_pred = []
+        val_loss, rmse, mae = 0.0, 0.0, 0.0
 
         with torch.no_grad():
             for X, y in val_loader:
@@ -344,42 +299,27 @@ class Trainer:
                 # Calculate loss
                 val_loss += self.criterion(logits.view(-1), y.view(-1))
 
-                # Store predictions and ground truths for later metrics calculation
-                list_y_true.append(y.cpu())
-                list_y_pred.append(logits.cpu())
+                # MAE and RMSE calculations
+                mae += l1_loss(logits.view(-1), y.view(-1)).item()
+                rmse += torch.sqrt(torch.mean((logits.view(-1) - y.view(-1)) ** 2)).item()
 
-            # Concatenate all predictions and true labels
-            y_true = torch.cat(list_y_true)
-            y_pred = torch.cat(list_y_pred)
-
-            # Calculate overall RMSE on the entire validation set
-            rmse = torch.sqrt(torch.mean((y_pred - y_true) ** 2)).item()
-
-            # Average validation loss over the number of batches
+            # Average validation loss, MAE, and RMSE over the number of batches
             avg_val_loss = val_loss / len(val_loader)
-        
-        return avg_val_loss, rmse
+            avg_val_mae = mae / len(val_loader)
+            avg_val_rmse = rmse / len(val_loader)
 
-    def _set_optimizer(self, name, lr, wd):
+        return avg_val_loss, avg_val_rmse, avg_val_mae
+
+    def _set_optimizer(self, optimizer_name, lr, wd):
         """
         Setup optimizer
-        
-        Parameters:
-        -----------
-        name : Optimizer name
-        lr : larning rate
-        wd : Wigth decay
-        
-        Returns:
-        --------
-        optimizer function
         """
-        if name == 'Adam':
+        if optimizer_name == 'Adam':
             optimizer = torch.optim.Adam(self.model.parameters(),
                                  lr=lr,
                                  weight_decay=wd,
                                 )
-        elif name == 'AdamW':
+        elif optimizer_name == 'AdamW':
             optimizer = torch.optim.AdamW(self.model.parameters(),
                                  lr=lr,
                                  weight_decay=wd,
@@ -390,26 +330,22 @@ class Trainer:
     def _set_lr_scheduler(self, optimizer, lr_scheduler_type, scheduler_params):
         """
         Setup lr_scheduler
-        
-        Parameters:
-        -----------
-        lr_scheduler_type : str
-            Name of the lr_scheduler to use
-        scheduler_params : dict
-            Parameters for the specific lr_scheduler
-        
-        Returns:
-        --------
-        lr_scheduler function
         """
         if lr_scheduler_type == 'StepLR':
             #lr_scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
             lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 
                                                        step_size=scheduler_params.get('step_size', 10), 
                                                        gamma=scheduler_params.get('gamma', 0.1))
+            
+        elif lr_scheduler_type == 'CosineAnnealingLR':
+            lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 
+                                                                      T_max=scheduler_params.get('T_max', 20), 
+                                                                      eta_min=scheduler_params.get('eta_min', 0), 
+                                                                      last_epoch=scheduler_params.get('last_epoch', -1))
 
         elif lr_scheduler_type == 'ReduceLROnPlateau':
-            lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode=scheduler_params.get('mode', 'min'),
+            lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
+                                                                mode=scheduler_params.get('mode', 'min'),
                                                                 factor=scheduler_params.get('factor', 0.1),
                                                                 patience=scheduler_params.get('patience', 10),
                                                                 threshold=scheduler_params.get('threshold', 0.0001),
@@ -487,11 +423,6 @@ class Trainer:
     def save_model(self, path):
         """
         Save the model state to a file.
-        
-        Parameters:
-        -----------
-        path : str
-            File path to save the model.
         """
         
         torch.save(self.model.state_dict(), path)
@@ -500,11 +431,6 @@ class Trainer:
     def load_model(self, path):
         """
         Load the model state from a file.
-        
-        Parameters:
-        -----------
-        path : str
-            File path to load the model from.
         """
         self.model.load_state_dict(torch.load(path))
         self.model.to(self.device)

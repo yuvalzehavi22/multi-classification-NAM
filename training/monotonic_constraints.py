@@ -35,13 +35,15 @@ class MonotonicityEnforcer:
                 logits_values = feature_matrix[logits_idx, :]
                 # diffs = logits_values[:-1] - logits_values[1:]  # Differences between consecutive values
                 # penalty = F.relu(diffs).sum()  # Penalize differences
-                diffs = logits_values[1:] - logits_values[:-1]  # Differences between consecutive values
                 
+                # Differences between consecutive values
+                diffs = torch.diff(logits_values) # logits_values[1:] - logits_values[:-1]
                 # Identify monotonicity violations
-                violations = (diffs < 0).float() * (diffs > 0).float()  # Penalize if signs flip
-                penalty = violations.sum()
+                penalty_mono = 0
+                for i in range(1,len(diffs)):
+                    penalty_mono += F.relu(-(diffs[i-1]*diffs[i]))
 
-                total_penalty += penalty
+                total_penalty += penalty_mono
 
         # Normalize penalty by the number of examples
         total_penalty = total_penalty / num_examples

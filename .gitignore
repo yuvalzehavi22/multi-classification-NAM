@@ -1,1 +1,36 @@
 MSC_venv/
+
+# Ignore __pycache__ directory
+__pycache__
+data_processing/__pycache__
+data_processing/__pycache__/data_loader.cpython-38.pyc
+model/__pycache__
+model/__pycache__/model_network.cpython-38.pyc
+training/__pycache__
+training/__pycache__/monotonic_constraints.cpython-38.pyc
+training/__pycache__/trainer.cpython-38.pyc
+training/__pycache__/trainer_utils.cpython-38.pyc
+utils/__pycache__
+utils/__pycache__/model_parser.cpython-38.pyc
+utils/__pycache__/visualize_shape_functions.cpython-38.pyc
+
+# Ignore ipynb checkpoints
+.ipynb_checkpoints
+
+# Ignore W&B
+artifacts
+wandb
+wandb/debug-cli.yuvalzehavi1.log
+wandb/debug-internal.log
+wandb/debug.log
+wandb/latest-run
+
+# Ignore Figures
+best_model.pt
+best_model.pth
+final_model.pt
+gradient_norms.png
+Shape functions for phase1.png
+Shape functions for phase2.png
+
+val_loss.json

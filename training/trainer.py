@@ -18,7 +18,7 @@ import plotly.graph_objects as go
 
 #from utils import define_device
 from training.trainer_utils import l1_penalty, l2_penalty, monotonic_penalty
-from utils.utils import define_device
+from utils.utils import define_device, plot_data_histograms
 from utils.model_parser import *
 
 
@@ -170,8 +170,7 @@ class Trainer:
                 
                 # Calculate loss
                 loss = self.criterion(logits.view(-1), y.view(-1))
-                mae = l1_loss(logits.view(-1), y.view(-1))  # MAE calculation
-                rmse = torch.sqrt(torch.mean((logits.view(-1) - y.view(-1)) ** 2))  # RMSE calculation
+
                 if 0:
                     print('y shape:', y.shape)
                     print('logits shape:', logits.shape)
@@ -180,7 +179,8 @@ class Trainer:
 
                 # Add L1, L2 regularization and Monotonicity Penalty for phase 1
                 params = [param for name, param in self.model.named_parameters() if 'multi_output_layer' in name]
-                l1_penalty_phase1_arch = l1_penalty(params, self.l1_lambda_phase1)
+                if len(params) > 0:
+                    l1_penalty_phase1_arch = l1_penalty(params, self.l1_lambda_phase1)
 
                 l1_penalty_phase1 = l1_penalty(phase1_gams_out, self.l1_lambda_phase1)
                 l2_penalty_phase1 = l2_penalty(phase1_gams_out, self.l2_lambda_phase1)
@@ -202,6 +202,11 @@ class Trainer:
                 
                 self.optimizer.step()
 
+                # Calculate metrics without gradient tracking
+                with torch.no_grad():
+                    mae = l1_loss(logits.view(-1), y.view(-1))  # MAE calculation
+                    rmse = torch.sqrt(torch.mean((logits.view(-1) - y.view(-1)) ** 2))  # RMSE calculation
+
                 epoch_loss += loss.item()
                 epoch_mae += mae.item()
                 epoch_rmse += rmse.item()
@@ -215,11 +220,11 @@ class Trainer:
 
             # Log losses and learning rate to W&B
             wandb.log({
-                "epoch": epoch + 1,
-                "train_loss": train_loss,
-                "train_mae": train_mae,
-                "train_rmse": train_rmse,
-                "learning_rate": self.lr_scheduler.get_last_lr()[0]  # Log current learning rate
+                #"epoch": epoch + 1,
+                "train/train_loss": train_loss,
+                "train/train_mae": train_mae,
+                "train/train_rmse": train_rmse,
+                "train/learning_rate": self.lr_scheduler.get_last_lr()[0]  # Log current learning rate
             })
 
             # Track and log gradients
@@ -241,10 +246,10 @@ class Trainer:
                 
                 # Log losses and learning rate to W&B
                 wandb.log({
-                    "epoch": epoch + 1,
-                    "val_loss": val_loss,
-                    "val_mae": val_mae,
-                    "val_rmse": val_rmse,
+                    #"epoch": epoch + 1,
+                    "validation/val_loss": val_loss,
+                    "validation/val_mae": val_mae,
+                    "validation/val_rmse": val_rmse,
                 })
 
                 # Early Stopping Check
@@ -273,6 +278,10 @@ class Trainer:
         artifact = wandb.Artifact('best_model', type='model')
         artifact.add_file('best_model.pt')
         wandb.log_artifact(artifact)
+
+        # # load the model and Log the predicted output distribution to W&B
+        # self.load_model("best_model.pt")
+        # self.plot_pred_data_histograms(loader)
         
         if all_param_groups:
             # Plot the gradients at the end of training and log the plot to W&B
@@ -411,7 +420,7 @@ class Trainer:
 
             # fig.show()
             # Log the figure to W&B
-            wandb.log({f"Gradient Norms Plot: {group_name}": fig})
+            wandb.log({f"gradients/Gradient Norms Plot: {group_name}": fig})
 
     def _log_gradients_wandb(self, grad_norms, epoch):
         """
@@ -435,3 +444,22 @@ class Trainer:
         self.model.load_state_dict(torch.load(path))
         self.model.to(self.device)
         print(f"Model loaded from {path}")
+
+    def plot_pred_data_histograms(self, loader):
+        """
+        Plots histograms of the predicted output.
+        using the "plot_data_histograms" function in the "utils/utils.py" file
+        """
+        self.model.eval()
+        with torch.no_grad():
+            for X, _ in loader:
+                X = X.to(self.device)
+                if self.model.hierarch_net:
+                    logits, latent_features, _, _ = self.model(X)
+                    _ = plot_data_histograms(values=latent_features, values_name='Concept',nbins=80, model_predict=True, save_path="data_processing/plots/")
+                    _ = plot_data_histograms(values=logits, values_name='Target',nbins=100, model_predict=True, save_path="data_processing/plots/")
+                else:
+                    logits, _ = self.model(X)
+                    _ = plot_data_histograms(values=logits, values_name='Concept',nbins=80, model_predict=True, save_path="data_processing/plots/")
+
+

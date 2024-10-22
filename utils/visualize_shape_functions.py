@@ -87,7 +87,7 @@ def visualize_gam(model, x_values, input_dim, output_dim, vis_lat_features = Fal
     return
 
 def get_shape_functions_synthetic_data(model, args, num_test_exp=1000, only_phase2 = False):
-    _, y_phase1, shape_functions_phase1 = SyntheticDatasetGenerator.get_synthetic_data_phase1(num_test_exp, args.in_features, is_test=True)
+    _, y_phase1, shape_functions_phase1, out_weights = SyntheticDatasetGenerator.get_synthetic_data_phase1(num_test_exp, args.in_features, is_test=True)
     _, shape_functions_phase2 = SyntheticDatasetGenerator.get_synthetic_data_phase2(y_phase1, is_test=True)
 
     x_values_phase1 = torch.linspace(0, 3, num_test_exp).reshape(-1, 1)

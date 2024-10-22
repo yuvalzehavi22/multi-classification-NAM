@@ -8,6 +8,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 import os
 
+import wandb
+
 class TorchDataset(Dataset):
     """
     Dataset class for PyTorch. This supports numpy arrays for both inputs and targets.
@@ -247,7 +249,7 @@ class SyntheticDatasetGenerator:
         shape_functions['f_1_0'] = 0.2*concepts[:, 0]
         shape_functions['f_1_1'] = (1/3)*concepts[:, 1]
         shape_functions['f_1_2'] =  0.1*(concepts[:, 2] ** 2) #0.5*X_input[:, 2] # 0.5*torch.exp(0.25 * X_input[:, 2]) #
-        shape_functions['f_1_3'] = (2/3)*concepts[:, 3] # 0.5 * (X_input[:, 3] ** 2) #
+        shape_functions['f_1_3'] = (2/3)*concepts[:, 3]
         y_1 = shape_functions['f_1_0'] + shape_functions['f_1_1'] + shape_functions['f_1_2'] + shape_functions['f_1_3']
         y_1 = y_1.reshape(-1, 1)
         
@@ -282,55 +284,59 @@ class SyntheticDatasetGenerator:
         loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
         return loader
     
-    @staticmethod
-    def plot_data_histograms(values, values_name, nbins=50, save_path="data_processing/plots/"):
-        """
-        Plots histograms for each feature in the dataset and saves them as .html files for later exploration.
+    # @staticmethod
+    # def plot_data_histograms(values, values_name, nbins=50, save_path="data_processing/plots/"):
+    #     """
+    #     Plots histograms for each feature in the dataset and saves them for later exploration.
 
-        Parameters:
-        -----------
-        values : torch.Tensor
-            The input tensor containing feature values.
+    #     Parameters:
+    #     -----------
+    #     values : torch.Tensor
+    #         The input tensor containing feature values.
         
-        values_name : str
-            The input type for the function. options: Input, Concept, Target
+    #     values_name : str
+    #         The input type for the function. options: Input, Concept, Target
 
-        nbins : int, optional (default=50)
-            Number of bins for the histograms.
+    #     nbins : int, optional (default=50)
+    #         Number of bins for the histograms.
         
-        save_path : str, optional (default='plots/')
-            The path where the plots will be saved.
-        """
+    #     save_path : str, optional (default='plots/')
+    #         The path where the plots will be saved.
+    #     """
 
-        # Convert values to a pandas DataFrame for easier handling
-        num_features = values.shape[1]
-        df = pd.DataFrame(values.numpy(), columns=[f'feature_{i}' for i in range(num_features)])
+    #     # Convert values to a pandas DataFrame for easier handling
+    #     num_features = values.shape[1]
+    #     df = pd.DataFrame(values.numpy(), columns=[f'feature_{i}' for i in range(num_features)])
 
-        fig = go.Figure()
+    #     fig = go.Figure()
 
-        for i in range(num_features):
-            fig.add_trace(
-                go.Histogram(x=df[f'feature_{i}'], name=f'{values_name} {i}', opacity=0.75, nbinsx=nbins)
-            )
+    #     for i in range(num_features):
+    #         fig.add_trace(
+    #             go.Histogram(x=df[f'feature_{i}'], name=f'{values_name} {i}', opacity=0.75, nbinsx=nbins)
+    #         )
 
-        # Update layout
-        fig.update_layout(
-            title=f'Histograms of {values_name}s',
-            xaxis_title='Value',
-            yaxis_title='Frequency',
-            barmode='overlay',  # Overlay histograms
-            bargap=0.2,  # Gap between bars
-            showlegend=True
-        )
+    #     # Update layout
+    #     fig.update_layout(
+    #         title=f'Histograms of {values_name}s',
+    #         xaxis_title='Value',
+    #         yaxis_title='Frequency',
+    #         barmode='overlay',  # Overlay histograms
+    #         bargap=0.2,  # Gap between bars
+    #         showlegend=True
+    #     )
 
-        # Save plot as an HTML file
-        if not os.path.exists(save_path):
-            os.makedirs(save_path)
+    #     # Save plot
+    #     save_plot = False
+    #     if save_plot:
+    #         if not os.path.exists(save_path):
+    #             os.makedirs(save_path)
 
-        plot_filename = os.path.join(save_path, f"{values_name}s_histograms.png")
-        fig.write_image(plot_filename)
+    #         plot_filename = os.path.join(save_path, f"{values_name}s_histograms.png")
+    #         fig.write_image(plot_filename)
 
-        print(f"Plot saved to {plot_filename}")
+    #         print(f"Plot saved to {plot_filename}")
 
-        return fig
+    #     wandb.log({f"data/Histograms of {values_name}s": fig})
+
+    #     return fig
     

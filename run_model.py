@@ -21,7 +21,7 @@ from utils.visualize_shape_functions import get_shape_functions, get_shape_funct
 from utils.model_architecture_type import get_defult_architecture_phase1, get_defult_architecture_phase2
 from training.trainer import Trainer
 from training.trainer_utils import get_param_groups, set_lr_scheduler_params, visualize_loss
-from utils.utils import define_device, seed_everything
+from utils.utils import define_device, plot_data_histograms, plot_pred_data_histograms, seed_everything
 from utils.model_parser import parse_args
 
 
@@ -60,12 +60,16 @@ def main():
         # Create DataLoaders
         train_loader, val_loader = dataloader_wrapper.create_dataloaders()
 
+    # Save the data distribution plots
+    input_fig = plot_data_histograms(values=X, values_name='Input', save_path="data_processing/plots/")
+    #input_fig.show()
+    concept_fig = plot_data_histograms(values=y_phase1, values_name='Concept',nbins=80, model_predict=False, save_path="data_processing/plots/")
+    #concept_fig.show()
+    target_fig = plot_data_histograms(values=y_phase2, values_name='Target',nbins=100, model_predict=False, save_path="data_processing/plots/")
+    #target_fig.show()
     
-    print("Train size:", len(train_loader.dataset), "Val size:", len(val_loader.dataset))
+    #print("Train size:", len(train_loader.dataset), "Val size:", len(val_loader.dataset))
 
-    # # Get default architectures for both phases - block_layers_type options: ReLU, shallow_ExU, Monotonic, ExU_ReLU
-    # get_defult_architecture_phase1(args, block_layers_type=args.GAM_block_layers_type_phase1)
-    # get_defult_architecture_phase2(args, block_layers_type=args.GAM_block_layers_type_phase2)
 
     print("Training Hierarchical NAM...")
     print(f"Phase1 architecture: [{args.first_activate_layer_phase1}: {args.first_hidden_dim_phase1}, {args.hidden_activate_layer_phase1}: {args.hidden_dim_phase1}]")
@@ -143,7 +147,6 @@ def main():
     # Run the training phase
     # Toy Problem
     train_loss_history, val_loss_history = trainer.train(loader=train_loader, all_param_groups=all_param_groups)
-
     #train_loss_history, val_loss_history = trainer.train(loader=train_loader, all_param_groups=all_param_groups, val_loader=val_loader)
 
     # # For hyperparam tunningy
@@ -161,6 +164,10 @@ def main():
     else: 
         get_shape_functions(hirarch_nam, args)
 
+    # load the model and Log the predicted output distribution to W&B
+    hirarch_nam.load_state_dict(torch.load('/home/yuvalzehavi1/Repos/multi-classification-NAM/best_model.pt'))
+    plot_pred_data_histograms(hirarch_nam, args.hierarch_net, X)
+    
 
 if __name__ == "__main__":
     main()

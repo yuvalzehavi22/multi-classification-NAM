@@ -239,7 +239,7 @@ def parse_args():
         parser.add_argument("--monotonicity_lambda_phase1",type=float, default=0.0, help="Parameter to controls the strength of the monotonicity constraint - Phase1")
         parser.add_argument("--monotonicity_lambda_phase2",type=float, default=0.0, help="Parameter to controls the strength of the monotonicity constraint - Phase2")
 
-        parser.add_argument('--eval_every', type=int, default=50, help='Evaluate every N epochs')
+        parser.add_argument('--eval_every', type=int, default=20, help='Evaluate every N epochs')
         parser.add_argument('--early_stop_delta', type=float, default=0.0, help='Min delta for early stopping')
         parser.add_argument('--early_stop_patience', type=int, default=200, help='Patience for early stopping')
         # parser.add_argument(

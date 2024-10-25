@@ -1,6 +1,7 @@
 import torch
 from torch.utils.data import Dataset, DataLoader, TensorDataset
 from torch.distributions.uniform import Uniform
+from torch.distributions import Normal
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -122,7 +123,7 @@ class SyntheticDatasetGenerator:
     """
 
     @staticmethod
-    def get_synthetic_data_phase1(num_exp=10, in_features=10, is_test=False):
+    def get_synthetic_data_phase1_old(num_exp=10, in_features=10, is_test=False):
         """
         Generate synthetic data for Phase 1.
         
@@ -208,6 +209,89 @@ class SyntheticDatasetGenerator:
         print(concepts.shape)
 
         return X, concepts, shape_functions, out_weights
+    
+    @staticmethod
+    def get_synthetic_data_phase1(num_exp=10, in_features=10, is_test=False):
+        """
+        Generate synthetic data for Phase 1, with concepts following a prior Gaussian distribution.
+        """
+        # Simulate independent variables, x0,...,xn from a Uniform distribution on [0, 3]
+        if is_test:
+            x_values = torch.linspace(0, 3, num_exp).reshape(-1, 1)  # Testing
+            X = x_values.repeat(1, in_features)
+        else:
+            X = torch.rand((num_exp, in_features)) * 3  # Raw features from Uniform distribution [0, 3]
+        
+        # Define the prior distribution for concepts (Gaussian)
+        prior_dist = Normal(0, 1)  # Gaussian prior with mean=0 and std=1
+        
+        # Creating a dict to save all the true shape functions 
+        shape_functions = {}
+        out_weights={}
+        for j in range(4):
+            for i in range(in_features):
+                shape_functions[f"f_{j}_{i}"] = torch.zeros(num_exp)
+                out_weights[f"f_{j}_{i}"] = 0
+
+        # Concept 0 generation: a mixture of functions of input features and prior noise
+        out_weights['f_0_0'] = 0.5
+        out_weights['f_0_1'] = 0.3
+        out_weights['f_0_2'] = 0.1
+
+        shape_functions['f_0_0'] = out_weights['f_0_0'] * X[:, 0]
+        shape_functions['f_0_1'] = out_weights['f_0_1'] * (X[:, 1]**3)
+        shape_functions['f_0_2'] = out_weights['f_0_2'] * (X[:, 2]**2)
+        
+        concept_0 = shape_functions['f_0_0'] + shape_functions['f_0_1'] + shape_functions['f_0_2']
+        
+        # # Add Gaussian noise to concept 0
+        # concept_0_noise = prior_dist.sample((num_exp,))
+        # concept_0 += concept_0_noise * 0.1  # Small noise
+        concept_0 = concept_0.reshape(-1, 1)
+
+        # Repeat the process for other concepts...
+        # Concept 1
+        out_weights['f_1_7'] = 0.5
+        out_weights['f_1_6'] = 0.2
+        shape_functions['f_1_7'] = out_weights['f_1_7'] * torch.exp(X[:, 7].abs())
+        shape_functions['f_1_6'] = out_weights['f_1_6'] * (torch.cos(4 * X[:, 6]))
+        concept_1 = shape_functions['f_1_7'] + shape_functions['f_1_6']
+        
+        # # Add Gaussian noise to concept 1
+        # concept_1_noise = Normal(0, 0.2).sample((num_exp,))
+        # concept_1 += concept_1_noise  # Gaussian noise for concept 1
+        concept_1 = concept_1.reshape(-1, 1)
+
+        # Repeat for the remaining concepts...
+        # Concept 2
+        out_weights['f_2_5'] = 0.9
+        out_weights['f_2_8'] = 1.2
+        shape_functions['f_2_5'] = out_weights['f_2_5'] * torch.log(10*X[:, 5]+1)
+        shape_functions['f_2_8'] = out_weights['f_2_8'] * (torch.sin(5 * X[:, 8]))
+        concept_2 = shape_functions['f_2_5'] + shape_functions['f_2_8']
+        
+        # # Add Gaussian noise to concept 2
+        # concept_2_noise = Normal(0, 1).sample((num_exp,))
+        # concept_2 += concept_2_noise
+        concept_2 = concept_2.reshape(-1, 1)
+        
+        # Concept 3
+        out_weights['f_3_7'] = 0.3
+        out_weights['f_3_2'] = 0.8
+        shape_functions['f_3_7'] = out_weights['f_3_7'] * torch.exp(X[:, 7].abs())
+        shape_functions['f_3_2'] = out_weights['f_3_2'] * (X[:, 2]**2)
+        concept_3 = shape_functions['f_3_7'] + shape_functions['f_3_2']
+        
+        # # Add Gaussian noise to concept 3
+        # concept_3_noise = Normal(0, 0.2).sample((num_exp,))
+        # concept_3 += concept_3_noise
+        concept_3 = concept_3.reshape(-1, 1)
+        
+        # Stack all concepts together
+        concepts = torch.cat([concept_0, concept_1, concept_2, concept_3], dim=1)
+        print(concepts.shape)
+        
+        return X, concepts, shape_functions, out_weights
 
     @staticmethod
     def get_synthetic_data_phase2(concepts, is_test=False):
@@ -248,7 +332,7 @@ class SyntheticDatasetGenerator:
         # creating y_1
         shape_functions['f_1_0'] = 0.2*concepts[:, 0]
         shape_functions['f_1_1'] = (1/3)*concepts[:, 1]
-        shape_functions['f_1_2'] =  0.1*(concepts[:, 2] ** 2) #0.5*X_input[:, 2] # 0.5*torch.exp(0.25 * X_input[:, 2]) #
+        shape_functions['f_1_2'] =  0.15*(concepts[:, 2] ** 2) #0.5*X_input[:, 2] # 0.5*torch.exp(0.25 * X_input[:, 2]) #
         shape_functions['f_1_3'] = (2/3)*concepts[:, 3]
         y_1 = shape_functions['f_1_0'] + shape_functions['f_1_1'] + shape_functions['f_1_2'] + shape_functions['f_1_3']
         y_1 = y_1.reshape(-1, 1)

@@ -123,7 +123,7 @@ class SyntheticDatasetGenerator:
     """
 
     @staticmethod
-    def get_synthetic_data_phase1_old(num_exp=10, in_features=10, is_test=False):
+    def get_synthetic_data_phase1(num_exp=10, in_features=10, is_test=False):
         """
         Generate synthetic data for Phase 1.
         
@@ -211,7 +211,7 @@ class SyntheticDatasetGenerator:
         return X, concepts, shape_functions, out_weights
     
     @staticmethod
-    def get_synthetic_data_phase1(num_exp=10, in_features=10, is_test=False):
+    def get_synthetic_data_phase1_trail1(num_exp=10, in_features=10, is_test=False):
         """
         Generate synthetic data for Phase 1, with concepts following a prior Gaussian distribution.
         """
@@ -322,16 +322,16 @@ class SyntheticDatasetGenerator:
                 shape_functions[f"f_{j}_{i}"] = torch.zeros(concepts.size(0))
 
         # creating y_0
-        shape_functions['f_0_0'] = (1/3)*concepts[:, 0]
-        shape_functions['f_0_1'] = 0.2*torch.exp(0.25*concepts[:, 1]) #0.2*X_input[:, 1] # 
+        shape_functions['f_0_0'] = 0.8*concepts[:, 0] # (1/3)*concepts[:, 0]
+        shape_functions['f_0_1'] = 0.6*torch.exp(0.25*concepts[:, 1]) #0.2*X_input[:, 1] # 
         shape_functions['f_0_2'] = 0.5*concepts[:, 2] # torch.exp(X_input[:, 2]) #
-        shape_functions['f_0_3'] = 0.4*concepts[:, 3]
+        shape_functions['f_0_3'] = 1.5*concepts[:, 3]
         y_0 = shape_functions['f_0_0'] + shape_functions['f_0_1'] + shape_functions['f_0_2'] + shape_functions['f_0_3']
         y_0 = y_0.reshape(-1, 1)
         
         # creating y_1
-        shape_functions['f_1_0'] = 0.2*concepts[:, 0]
-        shape_functions['f_1_1'] = (1/3)*concepts[:, 1]
+        shape_functions['f_1_0'] = 0.2*torch.exp(0.3*concepts[:, 1])
+        shape_functions['f_1_1'] = 0.4*concepts[:, 1] # (1/3)*concepts[:, 1]
         shape_functions['f_1_2'] =  0.15*(concepts[:, 2] ** 2) #0.5*X_input[:, 2] # 0.5*torch.exp(0.25 * X_input[:, 2]) #
         shape_functions['f_1_3'] = (2/3)*concepts[:, 3]
         y_1 = shape_functions['f_1_0'] + shape_functions['f_1_1'] + shape_functions['f_1_2'] + shape_functions['f_1_3']

@@ -102,8 +102,8 @@ def parse_args():
             default=1,       # Default value: 0 for False 
             help="Use hierarchical net (adding phase2) - 0 for False, 1 for True"
         )
-        parser.add_argument('--GAM_block_layers_type_phase1', type=str, default='ReLU', help='options: ReLU, shallow_ExU, Monotonic, ExU_ReLU')
-        parser.add_argument('--GAM_block_layers_type_phase2', type=str, default='Monotonic', help='options: ReLU, shallow_ExU, Monotonic, ExU_ReLU')
+        # parser.add_argument('--GAM_block_layers_type_phase1', type=str, default='ReLU', help='options: ReLU, shallow_ExU, Monotonic, ExU_ReLU')
+        # parser.add_argument('--GAM_block_layers_type_phase2', type=str, default='Monotonic', help='options: ReLU, shallow_ExU, Monotonic, ExU_ReLU')
 
         parser.add_argument(
             "--featureNN_arch_phase1", 
@@ -229,7 +229,7 @@ def parse_args():
         parser.add_argument('--epochs', type=int, default=1000, help='Number of epochs')
         parser.add_argument('--batch_size', type=int, default=1024, help='Batch size')
         parser.add_argument('--learning_rate', type=float, default=0.0035, help='Learning rate')
-        parser.add_argument('--weight_decay', type=float, default=0.0001, help='Weight decay')
+        parser.add_argument('--weight_decay', type=float, default=0.00001, help='Weight decay')
         parser.add_argument('--clip_value', type=int, default=0, help='Clip value of the wigths')
         # regularization parameters
         parser.add_argument("--l2_lambda_phase1",type=float, default=0.0, help="l2 regularization for the gams outputs of phase1")

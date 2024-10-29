@@ -152,9 +152,6 @@ class Trainer:
         # Initialize a dictionary to store gradient norms
         grad_norms = {}
 
-        # Define the prior distribution outside the training loop
-        concept_prior = torch.distributions.Normal(0, 1)  # Gaussian prior with mean=0 and std=1
-
         for epoch in tqdm(range(self.epochs)):
             self.model.train()
             epoch_loss, epoch_mae, epoch_rmse = 0.0, 0.0, 0.0
@@ -181,10 +178,12 @@ class Trainer:
                     print(torch.mean(logits.view(-1)-y.view(-1)))
 
                 # Add L1, L2 regularization and Monotonicity Penalty for phase 1
-                l1_penalty_phase1 = l1_penalty(phase1_gams_out, self.l1_lambda_phase1)
+                #l1_penalty_phase1 = l1_penalty(phase1_gams_out, self.l1_lambda_phase1)
                 l2_penalty_phase1 = l2_penalty(phase1_gams_out, self.l2_lambda_phase1)
                 mono_penalty_phase1 = monotonic_penalty(X, logits, self.monotonicity_lambda_phase1)
-                loss += l1_penalty_phase1 + l2_penalty_phase1 + mono_penalty_phase1
+                loss += l2_penalty_phase1 + mono_penalty_phase1
+                #loss += l1_penalty_phase1 + l2_penalty_phase1 + mono_penalty_phase1
+
 
                 params = [param for name, param in self.model.named_parameters() if 'multi_output_layer' in name]
                 if len(params) > 0:
@@ -197,13 +196,6 @@ class Trainer:
                     l2_penalty_phase2 = l2_penalty(phase2_gams_out, self.l2_lambda_phase2)
                     mono_penalty_phase2 = monotonic_penalty(latent_features, logits, self.monotonicity_lambda_phase2)
                     loss += l1_penalty_phase2 + l2_penalty_phase2 + mono_penalty_phase2
-
-                # Compute KL divergence between latent_features (learned concepts) and the prior
-                lambda_kl = 0.001
-                if latent_features is not None:
-                    learned_concept_dist = torch.distributions.Normal(latent_features.mean(), latent_features.std())
-                    kl_loss = torch.distributions.kl.kl_divergence(learned_concept_dist, concept_prior).mean()  # Averaged across batch
-                    loss += kl_loss * lambda_kl  # Add KL loss with scaling factor
 
                 # Backward pass and optimization step
                 loss.backward()
@@ -238,8 +230,8 @@ class Trainer:
                 "train/learning_rate": self.lr_scheduler.get_last_lr()[0]  # Log current learning rate
             })
 
-            # Track and log gradients
-            self._track_gradients(grad_norms, epoch)
+            # # Track and log gradients
+            # self._track_gradients(grad_norms, epoch)
 
             if val_loader is not None:
                 val_loss, val_rmse, val_mae = self.validate(val_loader)
@@ -294,10 +286,10 @@ class Trainer:
         # self.load_model("best_model.pt")
         # self.plot_pred_data_histograms(loader)
         
-        if all_param_groups:
-            # Plot the gradients at the end of training and log the plot to W&B
-            print('Plot the gradients at the end of training...')
-            self._plot_gradients(grad_norms, all_param_groups)
+        # # Plot the gradients at the end of training and log the plot to W&B
+        # if all_param_groups:
+        #     print('Plot the gradients at the end of training...')
+        #     self._plot_gradients(grad_norms, all_param_groups)
 
         return train_loss_history, val_loss_history
 

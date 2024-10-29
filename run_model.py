@@ -15,13 +15,15 @@ from torch.optim.lr_scheduler import StepLR
 import wandb
 
 from data_processing.data_loader import *
+# from data_processing.data_loader_new import *
+
 from model.activation_layers import ExULayer, ReLULayer, LipschitzMonotonicLayer
 from model.model_network import HierarchNeuralAdditiveModel
 from utils.visualize_shape_functions import get_shape_functions, get_shape_functions_synthetic_data
 from utils.model_architecture_type import get_defult_architecture_phase1, get_defult_architecture_phase2
 from training.trainer import Trainer
 from training.trainer_utils import get_param_groups, set_lr_scheduler_params, visualize_loss
-from utils.utils import define_device, plot_data_histograms, plot_pred_data_histograms, seed_everything
+from utils.utils import define_device, plot_concepts_weights, plot_data_histograms, plot_pred_data_histograms, seed_everything
 from utils.model_parser import parse_args
 
 
@@ -111,6 +113,9 @@ def main():
     # # Watch model weights and gradients
     # wandb.watch(hirarch_nam, log="gradients", log_freq=args.batch_size)
 
+    # if args.featureNN_arch_phase1 == 'single_to_multi_output':
+    #     plot_concepts_weights(out_weights, hirarch_nam, model_predict = False)
+    
     scheduler_params = set_lr_scheduler_params(args, args.lr_scheduler)
     print(scheduler_params)
 
@@ -167,6 +172,9 @@ def main():
     # load the model and Log the predicted output distribution to W&B
     hirarch_nam.load_state_dict(torch.load('/home/yuvalzehavi1/Repos/multi-classification-NAM/best_model.pt'))
     plot_pred_data_histograms(hirarch_nam, args.hierarch_net, X)
+    if args.featureNN_arch_phase1 == 'single_to_multi_output':
+        plot_concepts_weights(out_weights, hirarch_nam, model_predict = True)
+    
     
 
 if __name__ == "__main__":

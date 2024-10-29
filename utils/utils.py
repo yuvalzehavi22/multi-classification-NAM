@@ -1,3 +1,4 @@
+from matplotlib import pyplot as plt
 import torch
 import os
 import random
@@ -99,7 +100,8 @@ def plot_data_histograms(values, values_name, nbins=50, model_predict = False, s
 
         print(f"Plot saved to {plot_filename}")
 
-    wandb.log({f"data/{fig_title}": fig})
+    if wandb.run is not None:
+        wandb.log({f"data/{fig_title}": fig})
 
     return fig
 
@@ -123,3 +125,104 @@ def plot_pred_data_histograms(model, hierarch_net, inputs):
     else:
         logits, _ = model(inputs)
         _ = plot_data_histograms(values=logits, values_name='Concept',nbins=80, model_predict=True, save_path="data_processing/plots/")
+
+
+def plot_concepts_weights(weights_dict, model, model_predict = False):
+    """
+    Only is phase1 arch is single_to_multi_output!!
+    Plots the multi_output_layer weights for each feature in the model.
+    
+    Parameters:
+    - weights_dict: dict
+        A dictionary containing the true weights for each raw feature and concept class.
+    - model : PyTorch model
+        The trained model with multiple NAM blocks, each having its own multi_output_layer.
+    - model_predict : bool
+        If True, indicates that the weights value is after the model was trained.
+    """
+    concepts = sorted(set(int(key.split('_')[1]) for key in weights_dict.keys()))
+    features = sorted(set(int(key.split('_')[2]) for key in weights_dict.keys()))
+
+    num_concepts = len(concepts)
+    num_features = len(features)
+    
+    fig, axes = plt.subplots(num_concepts, 1, figsize=(10, 4 * num_concepts))
+
+    # If there's only one feature, axes will not be a list; convert it to a list for consistent indexing
+    if num_concepts == 1:
+        axes = [axes]
+
+    # Iterate through each feature block and plot the multi_output_layer weights
+    for i, concept in enumerate(concepts):
+        # Extract the true weights for the current class
+        true_weights = [weights_dict[f'f_{concept}_{j}'] for j in features]
+        
+        # Extract the predicted weights from the model for the current class
+        predicted_weights = []
+        for j in features:
+            feature_nn = model.NAM_features.feature_nns[j]
+            predicted_weight = feature_nn.multi_output_layer.weight[concept].detach().cpu().item()
+            predicted_weights.append(predicted_weight)
+
+        # Define the width of each bar and the positions
+        bar_width = 0.35
+        x = np.arange(num_features)
+
+        # Create the bar plots for true and predicted weights
+        axes[i].bar(x - bar_width / 2, true_weights, bar_width, label='True Weights', color='blue')
+        axes[i].bar(x + bar_width / 2, predicted_weights, bar_width, label='Predicted Weights', color='orange')
+
+        # Set the title and labels
+        axes[i].set_title(f'Weights for concept {concept}')
+        axes[i].set_xlabel('Feature Index')
+        axes[i].set_ylabel('Weight Value')
+        axes[i].set_xticks(x)
+        axes[i].set_xticklabels(features)
+        axes[i].legend()
+
+    plt.tight_layout()
+
+    # Set the figure title
+    fig_title = "True vs. Predicted multi_output_layer Weights" if model_predict else "True vs. Initialize multi_output_layer Weights"
+    fig.suptitle(fig_title, fontsize=16)
+
+    # Log the plot to W&B or show the plot if not logging
+    if wandb.run is not None:
+        wandb.log({f"Weights/{fig_title}": wandb.Image(fig)})
+    else:
+        plt.show()
+    
+    plt.close(fig)
+
+
+#    fig, axes = plt.subplots(num_classes, 1, figsize=(10, 4 * num_classes))
+
+#     # If there's only one feature, axes will not be a list; convert it to a list for consistent indexing
+#     if num_classes == 1:
+#         axes = [axes]
+
+#     # Iterate through each feature block and plot the multi_output_layer weights
+#     for i, feature_nn in enumerate(model.NAM_features.feature_nns):
+#         # Get the multi_output_layer weights for the current feature
+#         weights = feature_nn.multi_output_layer.weight.detach().cpu().numpy()  # Shape: [num_classes]
+        
+#         # Bar plot for the current feature's weights
+#         axes[i].bar(range(num_classes), weights.flatten())
+#         axes[i].set_title(f'Feature {i} Weights')
+#         axes[i].set_xlabel('Classes')
+#         axes[i].set_ylabel('Weight value')
+#         axes[i].set_xticks(range(num_classes))
+    
+#     plt.tight_layout()
+
+#     # Set the figure title
+#     fig_title = "Predicted multi_output_layer Weights" if model_predict else "multi_output_layer Weights"
+#     fig.suptitle(fig_title, fontsize=16)
+
+#     # Log the plot to W&B or show the plot if not logging
+#     if wandb.run is not None:
+#         wandb.log({f"Weights/{fig_title}": wandb.Image(fig)})
+#     else:
+#         plt.show()
+    
+#     plt.close(fig)

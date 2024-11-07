@@ -103,7 +103,7 @@ def set_lr_scheduler_params(args, lr_scheduler_type):
             scheduler_params['gamma'] = args.StepLR_gamma
         
         elif lr_scheduler_type == 'CosineAnnealingLR':
-            scheduler_params['T_max'] = args.epochs // 2
+            scheduler_params['T_max'] = 1000 #args.epochs // 2
             scheduler_params['eta_min'] = 0
             scheduler_params['last_epoch'] = -1
 

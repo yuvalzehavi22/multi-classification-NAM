@@ -145,44 +145,61 @@ def plot_concepts_weights(weights_dict, model, model_predict = False):
 
     num_concepts = len(concepts)
     num_features = len(features)
-    
-    fig, axes = plt.subplots(num_concepts, 1, figsize=(10, 4 * num_concepts))
+
+    #fig, axes = plt.subplots(num_concepts, 1, figsize=(10, 4 * num_concepts))
+    fig, axes = plt.subplots(num_features, 1, figsize=(8, 30))
 
     # If there's only one feature, axes will not be a list; convert it to a list for consistent indexing
-    if num_concepts == 1:
+    if num_features == 1:
         axes = [axes]
 
-    # Iterate through each feature block and plot the multi_output_layer weights
-    for i, concept in enumerate(concepts):
-        # Extract the true weights for the current class
-        true_weights = [weights_dict[f'f_{concept}_{j}'] for j in features]
-        
-        # Extract the predicted weights from the model for the current class
-        predicted_weights = []
-        for j in features:
-            feature_nn = model.NAM_features.feature_nns[j]
-            predicted_weight = feature_nn.multi_output_layer.weight[concept].detach().cpu().item()
-            predicted_weights.append(predicted_weight)
+    # Initialize lists for plotting weights
+    true_weights_list = []
+    predicted_weights_list = []
 
+    # Iterate through each feature block and plot the multi_output_layer weights
+    for i, feature in enumerate(features):
+        # Extract the true weights for the each concept
+        true_weights = [weights_dict[f'f_{concept}_{feature}'] for concept in concepts]
+        true_weights_list.append(true_weights)
+
+    # Extract the predicted weights from the model for the current feature
+    for i, feature_nn in enumerate(model.NAM_features.feature_nns):
+        # Get the multi_output_layer weights for the current feature
+        pred_weights = feature_nn.multi_output_layer.weight.detach().cpu().numpy().flatten()
+        predicted_weights_list.append(pred_weights)
+
+    # Calculate the global min and max for y-axis limits
+    true_weights_array = np.array(true_weights_list)
+    predicted_weights_array = np.array(predicted_weights_list)
+    global_y_min = min(true_weights_array.min(), predicted_weights_array.min())
+    global_y_max = max(true_weights_array.max(), predicted_weights_array.max())
+
+    # Plot true and predicted weights for each feature using the global y-axis limits
+    for i, feature in enumerate(features):
         # Define the width of each bar and the positions
         bar_width = 0.35
-        x = np.arange(num_features)
+        x = np.arange(num_concepts)
 
         # Create the bar plots for true and predicted weights
-        axes[i].bar(x - bar_width / 2, true_weights, bar_width, label='True Weights', color='blue')
-        axes[i].bar(x + bar_width / 2, predicted_weights, bar_width, label='Predicted Weights', color='orange')
+        axes[i].bar(x - bar_width / 2, true_weights_list[i], bar_width, label='True Weights', color='blue')
+        axes[i].bar(x + bar_width / 2, predicted_weights_list[i], bar_width, label='Predicted Weights', color='orange')
 
+        # Add a horizontal line at zero for reference
+        axes[i].axhline(0, color='gray', linestyle='--', linewidth=0.8)
+        # Set global y-axis limits
+        axes[i].set_ylim([global_y_min*1.1, global_y_max*1.1]) 
+        
         # Set the title and labels
-        axes[i].set_title(f'Weights for concept {concept}')
-        axes[i].set_xlabel('Feature Index')
+        axes[i].set_title(f'Weights for concepts - Feature {i}')
+        axes[i].set_xlabel('Concept Index')
         axes[i].set_ylabel('Weight Value')
         axes[i].set_xticks(x)
-        axes[i].set_xticklabels(features)
+        axes[i].set_xticklabels(concepts)
         axes[i].legend()
 
-    plt.tight_layout()
-
-    # Set the figure title
+    # Adjust layout to fit the figure title
+    fig.tight_layout(rect=[0, 0, 1, 0.96])  # Leave space for suptitle
     fig_title = "True vs. Predicted multi_output_layer Weights" if model_predict else "True vs. Initialize multi_output_layer Weights"
     fig.suptitle(fig_title, fontsize=16)
 
@@ -193,36 +210,3 @@ def plot_concepts_weights(weights_dict, model, model_predict = False):
         plt.show()
     
     plt.close(fig)
-
-
-#    fig, axes = plt.subplots(num_classes, 1, figsize=(10, 4 * num_classes))
-
-#     # If there's only one feature, axes will not be a list; convert it to a list for consistent indexing
-#     if num_classes == 1:
-#         axes = [axes]
-
-#     # Iterate through each feature block and plot the multi_output_layer weights
-#     for i, feature_nn in enumerate(model.NAM_features.feature_nns):
-#         # Get the multi_output_layer weights for the current feature
-#         weights = feature_nn.multi_output_layer.weight.detach().cpu().numpy()  # Shape: [num_classes]
-        
-#         # Bar plot for the current feature's weights
-#         axes[i].bar(range(num_classes), weights.flatten())
-#         axes[i].set_title(f'Feature {i} Weights')
-#         axes[i].set_xlabel('Classes')
-#         axes[i].set_ylabel('Weight value')
-#         axes[i].set_xticks(range(num_classes))
-    
-#     plt.tight_layout()
-
-#     # Set the figure title
-#     fig_title = "Predicted multi_output_layer Weights" if model_predict else "multi_output_layer Weights"
-#     fig.suptitle(fig_title, fontsize=16)
-
-#     # Log the plot to W&B or show the plot if not logging
-#     if wandb.run is not None:
-#         wandb.log({f"Weights/{fig_title}": wandb.Image(fig)})
-#     else:
-#         plt.show()
-    
-#     plt.close(fig)

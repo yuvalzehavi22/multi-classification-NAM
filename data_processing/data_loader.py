@@ -123,7 +123,7 @@ class SyntheticDatasetGenerator:
     """
 
     @staticmethod
-    def get_synthetic_data_phase1(num_exp=10, in_features=10, is_test=False):
+    def get_synthetic_data_phase1_old(num_exp=10, in_features=10, is_test=False):
         """
         Generate synthetic data for Phase 1.
         
@@ -211,90 +211,104 @@ class SyntheticDatasetGenerator:
         return X, concepts, shape_functions, out_weights
     
     @staticmethod
-    def get_synthetic_data_phase1_trail1(num_exp=10, in_features=10, is_test=False):
-        """
-        Generate synthetic data for Phase 1, with concepts following a prior Gaussian distribution.
-        """
+    def get_synthetic_data_phase1(num_exp=10, raw_features=10, num_concepts=4, is_test=False, seed=42):
+        # Set a seed for reproducibility
+        torch.manual_seed(seed)
+
         # Simulate independent variables, x0,...,xn from a Uniform distribution on [0, 3]
         if is_test:
-            x_values = torch.linspace(0, 3, num_exp).reshape(-1, 1)  # Testing
-            X = x_values.repeat(1, in_features)
+            x_values = torch.linspace(0, 3, num_exp).reshape(-1, 1)
+            X = x_values.repeat(1, raw_features)
         else:
-            X = torch.rand((num_exp, in_features)) * 3  # Raw features from Uniform distribution [0, 3]
-        
-        # Define the prior distribution for concepts (Gaussian)
-        prior_dist = Normal(0, 1)  # Gaussian prior with mean=0 and std=1
-        
-        # Creating a dict to save all the true shape functions 
+            X = Uniform(0, 3).sample((num_exp, raw_features))
+        print(X.shape)
+
+        # Initialize dictionaries for shape functions and weights
         shape_functions = {}
-        out_weights={}
-        for j in range(4):
-            for i in range(in_features):
+        out_weights = {}
+        for j in range(num_concepts):
+            for i in range(raw_features):
                 shape_functions[f"f_{j}_{i}"] = torch.zeros(num_exp)
                 out_weights[f"f_{j}_{i}"] = 0
 
-        # Concept 0 generation: a mixture of functions of input features and prior noise
-        out_weights['f_0_0'] = 0.5
-        out_weights['f_0_1'] = 0.3
-        out_weights['f_0_2'] = 0.1
+        # Generate weights and shape functions for each concept
+        for j in range(num_concepts):
+            # Select consistent feature indices for each concept
+            selected_features = torch.arange(raw_features)[j::num_concepts]
+            
+            # Add additional unique indices if needed
+            if len(selected_features) < 3:
+                existing_indices = set(selected_features.tolist())
+                last_item = (selected_features[-1] + num_concepts) % raw_features
+                additional_indices = []
+                
+                for offset in range(3 - len(selected_features)):
+                    new_item = (last_item + offset * num_concepts) % raw_features
+                    
+                    # Ensure `new_item` is unique by finding the next available index
+                    while int(new_item) in existing_indices:
+                        new_item = (new_item + 1) % raw_features  # Increment and wrap around if necessary
+                    
+                    if int(new_item) not in existing_indices:
+                        additional_indices.append(int(new_item))
+                        existing_indices.add(int(new_item))
 
-        shape_functions['f_0_0'] = out_weights['f_0_0'] * X[:, 0]
-        shape_functions['f_0_1'] = out_weights['f_0_1'] * (X[:, 1]**3)
-        shape_functions['f_0_2'] = out_weights['f_0_2'] * (X[:, 2]**2)
-        
-        concept_0 = shape_functions['f_0_0'] + shape_functions['f_0_1'] + shape_functions['f_0_2']
-        
-        # # Add Gaussian noise to concept 0
-        # concept_0_noise = prior_dist.sample((num_exp,))
-        # concept_0 += concept_0_noise * 0.1  # Small noise
-        concept_0 = concept_0.reshape(-1, 1)
+                selected_features = torch.cat((selected_features, torch.tensor(additional_indices)))
 
-        # Repeat the process for other concepts...
-        # Concept 1
-        out_weights['f_1_7'] = 0.5
-        out_weights['f_1_6'] = 0.2
-        shape_functions['f_1_7'] = out_weights['f_1_7'] * torch.exp(X[:, 7].abs())
-        shape_functions['f_1_6'] = out_weights['f_1_6'] * (torch.cos(4 * X[:, 6]))
-        concept_1 = shape_functions['f_1_7'] + shape_functions['f_1_6']
-        
-        # # Add Gaussian noise to concept 1
-        # concept_1_noise = Normal(0, 0.2).sample((num_exp,))
-        # concept_1 += concept_1_noise  # Gaussian noise for concept 1
-        concept_1 = concept_1.reshape(-1, 1)
+            # print('selected_features:')
+            # print(selected_features)
 
-        # Repeat for the remaining concepts...
-        # Concept 2
-        out_weights['f_2_5'] = 0.9
-        out_weights['f_2_8'] = 1.2
-        shape_functions['f_2_5'] = out_weights['f_2_5'] * torch.log(10*X[:, 5]+1)
-        shape_functions['f_2_8'] = out_weights['f_2_8'] * (torch.sin(5 * X[:, 8]))
-        concept_2 = shape_functions['f_2_5'] + shape_functions['f_2_8']
-        
-        # # Add Gaussian noise to concept 2
-        # concept_2_noise = Normal(0, 1).sample((num_exp,))
-        # concept_2 += concept_2_noise
-        concept_2 = concept_2.reshape(-1, 1)
-        
-        # Concept 3
-        out_weights['f_3_7'] = 0.3
-        out_weights['f_3_2'] = 0.8
-        shape_functions['f_3_7'] = out_weights['f_3_7'] * torch.exp(X[:, 7].abs())
-        shape_functions['f_3_2'] = out_weights['f_3_2'] * (X[:, 2]**2)
-        concept_3 = shape_functions['f_3_7'] + shape_functions['f_3_2']
-        
-        # # Add Gaussian noise to concept 3
-        # concept_3_noise = Normal(0, 0.2).sample((num_exp,))
-        # concept_3 += concept_3_noise
-        concept_3 = concept_3.reshape(-1, 1)
-        
-        # Stack all concepts together
-        concepts = torch.cat([concept_0, concept_1, concept_2, concept_3], dim=1)
+            for i, feature_idx in enumerate(selected_features):
+                key = f"f_{j}_{feature_idx}"
+
+                # Assign weights with more conditional cases for variety
+                if i % 2 == 0 and j % 2 == 0:
+                    out_weights[key] = (i + 2) * 0.5 / (j + 1)
+                elif i % 2 == 1 and j % 2 == 1:
+                    out_weights[key] = (int(feature_idx) + 1) * 0.1 * (j + 1)
+                elif int(feature_idx) % 2 == 0:
+                    out_weights[key] = (i + 1) * 0.25 / (j + 2)
+                else:
+                    out_weights[key] = (int(feature_idx) + 3) * 0.15
+
+                # Create shape functions dynamically
+                if int(feature_idx) == 0:
+                    shape_functions[key] = out_weights[key] * X[:, feature_idx]  # Linear function
+                elif int(feature_idx) == 1:
+                    shape_functions[key] = out_weights[key] * (torch.cos(4 * X[:, feature_idx])+1)
+                elif int(feature_idx) == 2:
+                    shape_functions[key] = out_weights[key] * (X[:, feature_idx]**2)  # Quadratic
+                elif int(feature_idx) == 3:
+                    shape_functions[key] = out_weights[key] * torch.exp(0.2*X[:, feature_idx])  # Exponential
+                elif int(feature_idx) == 4:
+                    out_weights[key] = 0
+                    shape_functions[key] = out_weights[key] * X[:, feature_idx]
+                elif int(feature_idx) == 5:
+                    shape_functions[key] = out_weights[key] * (X[:, feature_idx]**3)
+                elif int(feature_idx) == 6:
+                    shape_functions[key] = out_weights[key] * (torch.sin(5 * X[:, feature_idx])+1)
+                elif int(feature_idx) == 7 or int(feature_idx) == 8:
+                    out_weights[key] = 0
+                    shape_functions[key] = out_weights[key] * X[:, feature_idx]
+                else:
+                    shape_functions[key] = out_weights[key] * (torch.log(X[:, feature_idx]+1))
+
+            # Sum up shape functions to form a concept
+            concept = sum(shape_functions[f"f_{j}_{feature_idx}"] for feature_idx in selected_features)
+            concept = concept.reshape(-1, 1)
+
+            # Concatenate the concept to the concepts matrix
+            if j == 0:
+                concepts = concept
+            else:
+                concepts = torch.cat((concepts, concept), dim=1)
+
         print(concepts.shape)
-        
+
         return X, concepts, shape_functions, out_weights
 
-    @staticmethod
-    def get_synthetic_data_phase2(concepts, is_test=False):
+    @staticmethod      
+    def get_synthetic_data_phase2(concepts, num_classes=2, is_test=False):
         """
         Generate synthetic target values for Phase 2 using input features.
         
@@ -312,34 +326,53 @@ class SyntheticDatasetGenerator:
             Generated target values for Phase 2.
         """
         if is_test:
-            x_values = torch.linspace(0, round(float(concepts.max())), concepts.size(0)).reshape(-1, 1)  # 100 points between -1 and 1
+            x_values = torch.linspace(round(float(concepts.min())), round(float(concepts.max())), concepts.size(0)).reshape(-1, 1) 
             concepts = x_values.repeat(1, concepts.size(1))
 
         # Creating a dict to save all the true shape functions 
         shape_functions = {}
-        for j in range(2):
-            for i in range(concepts.size(1)):
-                shape_functions[f"f_{j}_{i}"] = torch.zeros(concepts.size(0))
 
-        # creating y_0
-        shape_functions['f_0_0'] = 0.8*concepts[:, 0] # (1/3)*concepts[:, 0]
-        shape_functions['f_0_1'] = 0.6*torch.exp(0.25*concepts[:, 1]) #0.2*X_input[:, 1] # 
-        shape_functions['f_0_2'] = 0.5*concepts[:, 2] # torch.exp(X_input[:, 2]) #
-        shape_functions['f_0_3'] = 1.5*concepts[:, 3]
-        y_0 = shape_functions['f_0_0'] + shape_functions['f_0_1'] + shape_functions['f_0_2'] + shape_functions['f_0_3']
-        y_0 = y_0.reshape(-1, 1)
-        
-        # creating y_1
-        shape_functions['f_1_0'] = 0.2*torch.exp(0.3*concepts[:, 1])
-        shape_functions['f_1_1'] = 0.4*concepts[:, 1] # (1/3)*concepts[:, 1]
-        shape_functions['f_1_2'] =  0.15*(concepts[:, 2] ** 2) #0.5*X_input[:, 2] # 0.5*torch.exp(0.25 * X_input[:, 2]) #
-        shape_functions['f_1_3'] = (2/3)*concepts[:, 3]
-        y_1 = shape_functions['f_1_0'] + shape_functions['f_1_1'] + shape_functions['f_1_2'] + shape_functions['f_1_3']
-        y_1 = y_1.reshape(-1, 1)
-        
-        # Stack all y_i to form the final target matrix
-        y = torch.cat([y_0, y_1], dim=1)
+        # Generate y_i for each output class
+        outputs = []
+        math_expressions = []
+
+        for j in range(num_classes):
+            output_sum = torch.zeros(concepts.size(0))
+
+            # Assign unique weights for this class
+            class_weights = [0.5 + 0.1 * j, 0.3 + 0.05 * j, 0.2 + 0.02 * j, 0.1 + 0.03 * j]
+            expression = f"output_{j} = "
+
+            for i in range(concepts.size(1)):
+                key = f"f_{j}_{i}"
+
+                # Choose different function types for each concept-to-output mapping
+                if (j + i) % 3 == 0:
+                    shape_functions[key] = class_weights[0] * concepts[:, i]  # Linear
+                    expression += f"{class_weights[0]:.2f} * concept[:, {i}] + "
+                elif (j + i) % 3 == 1:
+                    shape_functions[key] = class_weights[1] * torch.exp(0.2 * concepts[:, i])  # Exponential
+                    expression += f"{class_weights[1]:.2f} * exp(0.2 * concept[:, {i}]) + "
+                elif (j + i) % 3 == 2:
+                    shape_functions[key] = class_weights[2] * (concepts[:, i] ** 2)  # Quadratic
+                    expression += f"{class_weights[2]:.2f} * (concept[:, {i}] ** 2) + "
+                else:
+                    shape_functions[key] = class_weights[3] * (concepts[:, i]**3) #torch.sin(0.5 * concepts[:, i])  # Sinusoidal
+                    expression += f"{class_weights[3]:.2f} * (concept[:, {i}] ** 3) + "
+
+                output_sum += shape_functions[key]  # Add the function to the current output sum
+
+            expression = expression.rstrip(' + ')  # Remove trailing ' + '
+            math_expressions.append(expression)
+            outputs.append(output_sum.reshape(-1, 1))
+
+        # Stack all outputs to form the final target matrix
+        y = torch.cat(outputs, dim=1)
         print(y.shape)
+
+        # Print the generated math expressions for each output
+        for exp in math_expressions:
+            print(exp)
 
         return y, shape_functions
 
@@ -367,60 +400,4 @@ class SyntheticDatasetGenerator:
         dataset = TensorDataset(X, y)
         loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
         return loader
-    
-    # @staticmethod
-    # def plot_data_histograms(values, values_name, nbins=50, save_path="data_processing/plots/"):
-    #     """
-    #     Plots histograms for each feature in the dataset and saves them for later exploration.
-
-    #     Parameters:
-    #     -----------
-    #     values : torch.Tensor
-    #         The input tensor containing feature values.
-        
-    #     values_name : str
-    #         The input type for the function. options: Input, Concept, Target
-
-    #     nbins : int, optional (default=50)
-    #         Number of bins for the histograms.
-        
-    #     save_path : str, optional (default='plots/')
-    #         The path where the plots will be saved.
-    #     """
-
-    #     # Convert values to a pandas DataFrame for easier handling
-    #     num_features = values.shape[1]
-    #     df = pd.DataFrame(values.numpy(), columns=[f'feature_{i}' for i in range(num_features)])
-
-    #     fig = go.Figure()
-
-    #     for i in range(num_features):
-    #         fig.add_trace(
-    #             go.Histogram(x=df[f'feature_{i}'], name=f'{values_name} {i}', opacity=0.75, nbinsx=nbins)
-    #         )
-
-    #     # Update layout
-    #     fig.update_layout(
-    #         title=f'Histograms of {values_name}s',
-    #         xaxis_title='Value',
-    #         yaxis_title='Frequency',
-    #         barmode='overlay',  # Overlay histograms
-    #         bargap=0.2,  # Gap between bars
-    #         showlegend=True
-    #     )
-
-    #     # Save plot
-    #     save_plot = False
-    #     if save_plot:
-    #         if not os.path.exists(save_path):
-    #             os.makedirs(save_path)
-
-    #         plot_filename = os.path.join(save_path, f"{values_name}s_histograms.png")
-    #         fig.write_image(plot_filename)
-
-    #         print(f"Plot saved to {plot_filename}")
-
-    #     wandb.log({f"data/Histograms of {values_name}s": fig})
-
-    #     return fig
     

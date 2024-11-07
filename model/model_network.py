@@ -270,7 +270,7 @@ class FeatureNN(torch.nn.Module):
             single_output = self.feature_nns(x)
             # Final output layer
             outputs = self.multi_output_layer(single_output)
-            
+                    
         return outputs
 
 
@@ -386,6 +386,7 @@ class HierarchNeuralAdditiveModel(torch.nn.Module):
                  num_inputs: int,
                  task_type: str = 'regression',
                  hierarch_net: bool = True,
+                 learn_only_concepts: bool = False,
 
                  #phase1 - latent_features:
                  num_units_phase1: int= 64,
@@ -441,10 +442,14 @@ class HierarchNeuralAdditiveModel(torch.nn.Module):
         """
 
         self.input_size = num_inputs
+        self.latent_var_dim = latent_var_dim
+        self.num_classes = output_dim
+        
         self.task_type = task_type
         self.hierarch_net = hierarch_net
+        self.learn_only_concepts = learn_only_concepts
 
-        # phase1 hyperparameters - latent_features:
+        # phase1 hyperparameters - concepts:
         self.num_units_phase1 = num_units_phase1
         self.hidden_units_phase1 = hidden_units_phase1
         self.hidden_dropout_phase1 = hidden_dropout_phase1
@@ -452,57 +457,56 @@ class HierarchNeuralAdditiveModel(torch.nn.Module):
         self.shallow_phase1 = shallow_phase1
         self.activation_first_layer_phase1 = first_layer_phase1
         self.activation_hidden_layer_phase1 = hidden_layer_phase1
-        self.latent_var_dim = latent_var_dim
         self.architecture_type_phase1 = featureNN_architecture_phase1
         self.weight_norms_kind_first_layer_phase1 = weight_norms_kind_phase1
         self.activation_function_group_size_phase1 = group_size_phase1
         self.monotonic_constraint_phase1 = monotonic_constraint_phase1
 
-        # phase1 hyperparameters - latent_features:
-        self.num_units_phase2 = num_units_phase2
-        self.hidden_units_phase2 = hidden_units_phase2
-        self.hidden_dropout_phase2 = hidden_dropout_phase2
-        self.feature_dropout_phase2 = feature_dropout_phase2
-        self.shallow_phase2 = shallow_phase2
-        self.activation_first_layer_phase2 = first_layer_phase2
-        self.activation_hidden_layer_phase2 = hidden_layer_phase2
-        self.num_classes = output_dim
-        self.architecture_type_phase2 = featureNN_architecture_phase2
-        self.weight_norms_kind_first_layer_phase2 = weight_norms_kind_phase2
-        self.activation_function_group_size_phase2 = group_size_phase2
-        self.monotonic_constraint_phase2 = monotonic_constraint_phase2
-
         self.NAM_features = NeuralAdditiveModel(
-                                num_inputs = self.input_size,
-                                num_units = self.num_units_phase1,
-                                hidden_units = self.hidden_units_phase1,
-                                hidden_dropout = self.hidden_dropout_phase1,
-                                feature_dropout = self.feature_dropout_phase1,
-                                shallow = self.shallow_phase1,
-                                first_layer = self.activation_first_layer_phase1,
-                                hidden_layer = self.activation_hidden_layer_phase1,
-                                num_classes = self.latent_var_dim,
-                                architecture_type = self.architecture_type_phase1,
-                                weight_norms_kind = self.weight_norms_kind_first_layer_phase1, 
-                                group_size = self.activation_function_group_size_phase1, 
-                                monotonic_constraint = self.monotonic_constraint_phase1,          
-                                )
+                        num_inputs = self.input_size,
+                        num_units = self.num_units_phase1,
+                        hidden_units = self.hidden_units_phase1,
+                        hidden_dropout = self.hidden_dropout_phase1,
+                        feature_dropout = self.feature_dropout_phase1,
+                        shallow = self.shallow_phase1,
+                        first_layer = self.activation_first_layer_phase1,
+                        hidden_layer = self.activation_hidden_layer_phase1,
+                        num_classes = self.latent_var_dim,
+                        architecture_type = self.architecture_type_phase1,
+                        weight_norms_kind = self.weight_norms_kind_first_layer_phase1, 
+                        group_size = self.activation_function_group_size_phase1, 
+                        monotonic_constraint = self.monotonic_constraint_phase1,          
+                        )
 
-        self.NAM_output = NeuralAdditiveModel(
-                                num_inputs = self.latent_var_dim,
-                                num_units = self.num_units_phase2,
-                                hidden_units = self.hidden_units_phase2,
-                                hidden_dropout = self.hidden_dropout_phase2,
-                                feature_dropout = self.feature_dropout_phase2,
-                                shallow = self.shallow_phase2,
-                                first_layer = self.activation_first_layer_phase2,
-                                hidden_layer = self.activation_hidden_layer_phase2,
-                                num_classes = self.num_classes,
-                                architecture_type = self.architecture_type_phase2,
-                                weight_norms_kind = self.weight_norms_kind_first_layer_phase2, 
-                                group_size = self.activation_function_group_size_phase2, 
-                                monotonic_constraint = self.monotonic_constraint_phase2,   
-                                )
+        if hierarch_net or not learn_only_concepts:
+            # phase2 hyperparameters - final outputs:
+            self.num_units_phase2 = num_units_phase2
+            self.hidden_units_phase2 = hidden_units_phase2
+            self.hidden_dropout_phase2 = hidden_dropout_phase2
+            self.feature_dropout_phase2 = feature_dropout_phase2
+            self.shallow_phase2 = shallow_phase2
+            self.activation_first_layer_phase2 = first_layer_phase2
+            self.activation_hidden_layer_phase2 = hidden_layer_phase2
+            self.architecture_type_phase2 = featureNN_architecture_phase2
+            self.weight_norms_kind_first_layer_phase2 = weight_norms_kind_phase2
+            self.activation_function_group_size_phase2 = group_size_phase2
+            self.monotonic_constraint_phase2 = monotonic_constraint_phase2
+
+            self.NAM_output = NeuralAdditiveModel(
+                                    num_inputs = self.latent_var_dim,
+                                    num_units = self.num_units_phase2,
+                                    hidden_units = self.hidden_units_phase2,
+                                    hidden_dropout = self.hidden_dropout_phase2,
+                                    feature_dropout = self.feature_dropout_phase2,
+                                    shallow = self.shallow_phase2,
+                                    first_layer = self.activation_first_layer_phase2,
+                                    hidden_layer = self.activation_hidden_layer_phase2,
+                                    num_classes = self.num_classes,
+                                    architecture_type = self.architecture_type_phase2,
+                                    weight_norms_kind = self.weight_norms_kind_first_layer_phase2, 
+                                    group_size = self.activation_function_group_size_phase2, 
+                                    monotonic_constraint = self.monotonic_constraint_phase2,   
+                                    )
         
         # Define activation based on task type
         if self.task_type == 'binary_classification':
@@ -515,19 +519,60 @@ class HierarchNeuralAdditiveModel(torch.nn.Module):
 
     def forward(self, x):
         latent_outputs, phase1_gams_out = self.NAM_features(x)
-        if not self.hierarch_net:
-            # Apply activation based on the task
-            if self.final_activation:
-                outputs = self.final_activation(latent_outputs)
-            else:
-                outputs = latent_outputs
-                
-            return outputs, phase1_gams_out
-        
-        else:
-            outputs, phase2_gams_out = self.NAM_output(latent_outputs)
-            # Apply activation based on the task
-            if self.final_activation:
-                outputs = self.final_activation(outputs)
 
+        if self.learn_only_concepts:
+            outputs = self.phase2(latent_outputs)  # Phase 2 computation using latent features
+            phase2_gams_out = None
             return outputs, latent_outputs, phase1_gams_out, phase2_gams_out
+        else:
+            if not self.hierarch_net:
+                # Apply activation based on the task
+                if self.final_activation:
+                    outputs = self.final_activation(latent_outputs)
+                else:
+                    outputs = latent_outputs
+                    
+                return outputs, phase1_gams_out
+            
+            else:
+                outputs, phase2_gams_out = self.NAM_output(latent_outputs)
+                # Apply activation based on the task
+                if self.final_activation:
+                    outputs = self.final_activation(outputs)
+
+                return outputs, latent_outputs, phase1_gams_out, phase2_gams_out
+        
+    def phase2(self, concepts):
+        outputs = []
+        #math_expressions = []
+
+        for j in range(self.num_classes):
+            output_sum = torch.zeros(concepts.size(0), device=concepts.device)
+
+            class_weights = [0.5 + 0.1 * j, 0.3 + 0.05 * j, 0.2 + 0.02 * j, 0.1 + 0.03 * j]
+            #expression = f"output_{j} = "
+
+            for i in range(concepts.size(1)):
+                if (j + i) % 3 == 0:
+                    output_sum += class_weights[0] * concepts[:, i]  # Linear
+                    #expression += f"{class_weights[0]:.2f} * concept[:, {i}] + "
+                elif (j + i) % 3 == 1:
+                    output_sum += class_weights[1] * torch.exp(0.2 * concepts[:, i])  # Exponential
+                    #expression += f"{class_weights[1]:.2f} * exp(0.2 * concept[:, {i}]) + "
+                elif (j + i) % 3 == 2:
+                    output_sum += class_weights[2] * (concepts[:, i] ** 2)  # Quadratic
+                    #expression += f"{class_weights[2]:.2f} * (concept[:, {i}] ** 2) + "
+                else:
+                    output_sum += class_weights[3] * (concepts[:, i]**3)  # Cubic
+                    #expression += f"{class_weights[3]:.2f} * (concept[:, {i}] ** 3) + "
+            
+            # expression = expression.rstrip(' + ')  # Remove trailing ' + '
+            # math_expressions.append(expression)
+            outputs.append(output_sum.reshape(-1, 1))
+        
+        # # Print the generated math expressions for each output
+        # for exp in math_expressions:
+        #     print(exp)
+
+        y = torch.cat(outputs, dim=1)
+        return y

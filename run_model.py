@@ -19,13 +19,13 @@ from data_processing.data_loader import *
 
 from model.activation_layers import ExULayer, ReLULayer, LipschitzMonotonicLayer
 from model.model_network import HierarchNeuralAdditiveModel
+from training.trainer_learn_concepts import Trainer_concepts
 from utils.visualize_shape_functions import get_shape_functions, get_shape_functions_synthetic_data
 from utils.model_architecture_type import get_defult_architecture_phase1, get_defult_architecture_phase2
 from training.trainer import Trainer
 from training.trainer_utils import get_param_groups, set_lr_scheduler_params, visualize_loss
 from utils.utils import define_device, plot_concepts_weights, plot_data_histograms, plot_pred_data_histograms, seed_everything
 from utils.model_parser import parse_args
-
 
 
 def main():
@@ -41,21 +41,24 @@ def main():
     seed_everything(args.seed)
 
     # DATA PROCESSING: Generate synthetic data for Phase 1 and Phase 2
-    X, y_phase1, _, out_weights = SyntheticDatasetGenerator.get_synthetic_data_phase1(args.num_exp, args.in_features)
-    y_phase2, _ = SyntheticDatasetGenerator.get_synthetic_data_phase2(y_phase1)
+    # X, y_phase1, _, out_weights = SyntheticDatasetGenerator.get_synthetic_data_phase1(args.num_exp, args.in_features)
+    # y_phase2, _ = SyntheticDatasetGenerator.get_synthetic_data_phase2(y_phase1)
+
+    X, y_phase1, _, out_weights = SyntheticDatasetGenerator.get_synthetic_data_phase1(num_exp=args.num_exp, raw_features=args.in_features, num_concepts=args.latent_dim, is_test=False, seed=args.seed)
+    y_phase2, _ = SyntheticDatasetGenerator.get_synthetic_data_phase2(y_phase1, num_classes=args.output_dim, is_test=False)
 
     SyntheticDataset= True
     if SyntheticDataset:
         # Generate synthetic data for validation set
-        X_val, y_phase1_val, _, _ = SyntheticDatasetGenerator.get_synthetic_data_phase1(10000, args.in_features)
-        y_phase2_val, _ = SyntheticDatasetGenerator.get_synthetic_data_phase2(y_phase1_val)
+        # X_val, y_phase1_val, _, _ = SyntheticDatasetGenerator.get_synthetic_data_phase1(100, args.in_features)
+        # y_phase2_val, _ = SyntheticDatasetGenerator.get_synthetic_data_phase2(y_phase1_val)
 
         if args.hierarch_net:
             train_loader = SyntheticDatasetGenerator.make_loader(X, y_phase2, batch_size=args.batch_size)
-            val_loader = SyntheticDatasetGenerator.make_loader(X_val, y_phase2_val, batch_size=args.batch_size)
+            #val_loader = SyntheticDatasetGenerator.make_loader(X_val, y_phase2_val, batch_size=args.batch_size)
         else:
             train_loader = SyntheticDatasetGenerator.make_loader(X, y_phase1, batch_size=args.batch_size)
-            val_loader = SyntheticDatasetGenerator.make_loader(X_val, y_phase1_val, batch_size=args.batch_size)
+            #val_loader = SyntheticDatasetGenerator.make_loader(X_val, y_phase1_val, batch_size=args.batch_size)
     else:
         # Initialize DataLoaderWrapper with validation split
         dataloader_wrapper = DataLoaderWrapper(X, y_phase2, val_split=args.val_split)
@@ -82,6 +85,7 @@ def main():
     hirarch_nam = HierarchNeuralAdditiveModel(num_inputs=args.in_features,
                                         task_type= args.task_type,
                                         hierarch_net= args.hierarch_net,
+                                        learn_only_concepts = args.learn_only_concepts,
                                         #phase1 - latent_features:
                                         num_units_phase1= args.first_hidden_dim_phase1,
                                         hidden_units_phase1 = args.hidden_dim_phase1,
@@ -110,6 +114,9 @@ def main():
                                         monotonic_constraint_phase2 = args.monotonic_constraint_phase2
                                         ).to(device)
     
+    total_params = sum(p.numel() for p in hirarch_nam.parameters())
+    print(f"Number of parameters: {total_params}")
+    
     # # Watch model weights and gradients
     # wandb.watch(hirarch_nam, log="gradients", log_freq=args.batch_size)
 
@@ -120,7 +127,8 @@ def main():
     print(scheduler_params)
 
     # Initialize the Trainer class
-    trainer = Trainer(
+    #Trainer_concepts or Trainer
+    trainer = Trainer_concepts(
         model=hirarch_nam,
         optimizer=args.optimizer,
         loss_function=None,
@@ -150,7 +158,6 @@ def main():
         all_param_groups=None
         
     # Run the training phase
-    # Toy Problem
     train_loss_history, val_loss_history = trainer.train(loader=train_loader, all_param_groups=all_param_groups)
     #train_loss_history, val_loss_history = trainer.train(loader=train_loader, all_param_groups=all_param_groups, val_loader=val_loader)
 
@@ -162,6 +169,9 @@ def main():
     # print loss curves
     if 0:
         visualize_loss(train_loss_history, val_loss_history)
+
+    # load the model
+    hirarch_nam.load_state_dict(torch.load('/home/yuvalzehavi1/Repos/multi-classification-NAM/best_model.pt'))
     
     # Visualization of the shape functions created in the two phases
     if SyntheticDataset:
@@ -169,18 +179,17 @@ def main():
     else: 
         get_shape_functions(hirarch_nam, args)
 
-    # load the model and Log the predicted output distribution to W&B
-    hirarch_nam.load_state_dict(torch.load('/home/yuvalzehavi1/Repos/multi-classification-NAM/best_model.pt'))
+    # Log the predicted output distribution to W&B
     plot_pred_data_histograms(hirarch_nam, args.hierarch_net, X)
+
+    # Log the concepts weights to W&B
     if args.featureNN_arch_phase1 == 'single_to_multi_output':
         plot_concepts_weights(out_weights, hirarch_nam, model_predict = True)
     
     
-
 if __name__ == "__main__":
     main()
                         
-
 
 #python run_model.py --seed 42 --eval_every 50 --featureNN_arch_phase1 'single_to_multi_output' --featureNN_arch_phase2 'parallel_single_output' --learning_rate 0.0035 --epochs 1000 --l1_lambda_phase1 0.001
 #python run_model.py --optimizer "Adam" --epochs 100 --batch_size 1024 --learning_rate 0.0035 --weight_decay 0.0001 --first_hidden_dim_phase1 64 --hidden_dim_phase1 64 32 --first_activate_layer_phase1 "ReLU" --hidden_activate_layer_phase1 "ReLU" --first_hidden_dim_phase2 128 --hidden_dim_phase2 128 64 --first_activate_layer_phase2 "LipschitzMonotonic" --hidden_activate_layer_phase2 "LipschitzMonotonic"
@@ -188,3 +197,4 @@ if __name__ == "__main__":
 #python run_model.py --seed 42 --eval_every 50 --featureNN_arch_phase1 'single_to_multi_output' --featureNN_arch_phase2 'parallel_single_output' --learning_rate 0.0001 --epochs 1000 --l1_lambda_phase1 1e-8 --l1_lambda_phase2 1e-7 --monotonicity_lambda 1e-6
 #python run_model.py --seed 42 --eval_every 50 --featureNN_arch_phase1 'single_to_multi_output' --featureNN_arch_phase2 'parallel_single_output' --learning_rate 0.0005 --epochs 1000 --l1_lambda_phase1 1e-8 --l1_lambda_phase2 1e-7 --monotonicity_lambda 1e-6 --first_hidden_dim_phase2 64 --hidden_dim_phase2 64 32 --first_activate_layer_phase2 "ReLU" --hidden_activate_layer_phase2 "ReLU"
 #python run_model.py --seed 42 --eval_every 50 --learning_rate 0.001 --epochs 1000 --hierarch_net 0 --featureNN_arch_phase1 'single_to_multi_output' --batch_size 32 --lr_scheduler 'StepLR' --l2_lambda_phase1 1e-6
+#python run_model.py --WB_project_name "Hirarchial_GAMs-synt_data" --num_exp 10 --epochs 2 --lr_scheduler 'CosineAnnealingLR' --learning_rate 0.0005 --in_features 5 --latent_dim 3 --output_dim 4 --learn_only_concepts 1

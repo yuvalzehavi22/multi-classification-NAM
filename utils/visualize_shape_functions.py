@@ -88,8 +88,11 @@ def visualize_gam(model, x_values, input_dim, output_dim, vis_lat_features = Fal
     return
 
 def get_shape_functions_synthetic_data(model, args, num_test_exp=1000, only_phase2 = False):
-    _, y_phase1, shape_functions_phase1, out_weights = SyntheticDatasetGenerator.get_synthetic_data_phase1(num_test_exp, args.in_features, is_test=True)
-    _, shape_functions_phase2 = SyntheticDatasetGenerator.get_synthetic_data_phase2(y_phase1, is_test=True)
+    # _, y_phase1, shape_functions_phase1, out_weights = SyntheticDatasetGenerator.get_synthetic_data_phase1(num_test_exp, args.in_features, is_test=True)
+    # _, shape_functions_phase2 = SyntheticDatasetGenerator.get_synthetic_data_phase2(y_phase1, is_test=True)
+
+    _, y_phase1, shape_functions_phase1 , out_weights = SyntheticDatasetGenerator.get_synthetic_data_phase1(num_exp=num_test_exp, raw_features=args.in_features, num_concepts=args.latent_dim, is_test=True, seed=args.seed)
+    _, shape_functions_phase2 = SyntheticDatasetGenerator.get_synthetic_data_phase2(y_phase1, num_classes=args.output_dim, is_test=True)
 
     # x_values_phase1 = torch.linspace(-1, 1, num_test_exp).reshape(-1, 1)
     # x_values_phase2 = torch.linspace(round(float(y_phase1.min())), round(float(y_phase1.max())), num_test_exp).reshape(-1, 1)
@@ -137,8 +140,8 @@ def visualize_combined_gam(model, x_values, input_dim, output_dim, shape_functio
                 true_feature_output = shape_functions[f'f_{j}_{i}']
 
                 # Update global min and max
-                global_min = min(global_min, feature_output.min(), true_feature_output.min())
-                global_max = max(global_max, feature_output.max(), true_feature_output.max())
+                global_min = min(global_min, feature_output.min().item(), true_feature_output.min().item())
+                global_max = max(global_max, feature_output.max().item(), true_feature_output.max().item())
 
     # Second pass: Plot the predicted and true shape functions with consistent y-limits
     fig, axes = plt.subplots(input_dim, output_dim, figsize=(15, 30))
@@ -184,8 +187,11 @@ def visualize_combined_gam(model, x_values, input_dim, output_dim, shape_functio
     plt.savefig(f"{fig_name}.png")
 
     # Log the plot to W&B
-    wandb.log({fig_name: wandb.Image(f"{fig_name}.png")})
+    if wandb.run is not None:
+        wandb.log({fig_name: wandb.Image(f"{fig_name}.png")})
+    else:
+        plt.show()
+        
     plt.close()
-    
-    #plt.show()
+
     return

@@ -14,6 +14,7 @@ def parse_args():
             val_split=0.2,
             task_type="regression",
             hierarch_net=True,
+            learn_only_concepts = False,
             GAM_block_layers_type_phase1="ReLU",
             GAM_block_layers_type_phase2="ReLU",
             featureNN_arch_phase1="multi_output",
@@ -102,18 +103,26 @@ def parse_args():
             default=1,       # Default value: 0 for False 
             help="Use hierarchical net (adding phase2) - 0 for False, 1 for True"
         )
+        parser.add_argument(
+            '--learn_only_concepts', 
+            type=int,
+            choices=[0, 1],  # Only allow 0 or 1 as valid input
+            default=0,       # Default value: 0 for False 
+            help="Learn only concepts (the shape functions for phase2 are geven) - 0 for False, 1 for True"
+        )
+        
         # parser.add_argument('--GAM_block_layers_type_phase1', type=str, default='ReLU', help='options: ReLU, shallow_ExU, Monotonic, ExU_ReLU')
         # parser.add_argument('--GAM_block_layers_type_phase2', type=str, default='Monotonic', help='options: ReLU, shallow_ExU, Monotonic, ExU_ReLU')
 
         parser.add_argument(
             "--featureNN_arch_phase1", 
             type=str, 
-            default="multi_output", 
+            default="single_to_multi_output", 
             help="one of 'multi_output', 'single_to_multi_output' or 'parallel_single_output'")
         parser.add_argument(
             "--featureNN_arch_phase2", 
             type=str, 
-            default="multi_output", 
+            default="parallel_single_output", 
             help="one of 'multi_output', 'single_to_multi_output' or 'parallel_single_output'")
         # Networks parameter
         parser.add_argument(
@@ -125,7 +134,7 @@ def parse_args():
         parser.add_argument(
             '--first_activate_layer_phase2', 
             type=str, 
-            default='LipschitzMonotonic', 
+            default='ReLU', 
             help='First activation layer for phase2 (optional). options: ReLU, ExU, LipschitzMonotonic'
         )
         parser.add_argument(
@@ -137,7 +146,7 @@ def parse_args():
         parser.add_argument(
             '--first_hidden_dim_phase2', 
             type=int, 
-            default=128, 
+            default=64, 
             help='Number of hidden units in the first hidden layer for phase2'
         )
         parser.add_argument(
@@ -164,7 +173,7 @@ def parse_args():
         parser.add_argument(
             '--hidden_activate_layer_phase2', 
             type=str, 
-            default='LipschitzMonotonic', 
+            default='ReLU', 
             help='Hidden activation layer for phase2 (optional). options: ReLU, ExU, LipschitzMonotonic'
         )
         parser.add_argument(
@@ -178,7 +187,7 @@ def parse_args():
             '--hidden_dim_phase2', 
             type=int, 
             nargs='+',
-            default=[128, 64],
+            default=[64, 32],
             help='Number of hidden units in the next hidden layers - the number of additional layers is the size of the list.'
         )
         parser.add_argument(
@@ -227,7 +236,7 @@ def parse_args():
         # ----------------------- train/eval parameters -----------------------
         # ---------------------------------------------------------------------
         parser.add_argument('--epochs', type=int, default=1000, help='Number of epochs')
-        parser.add_argument('--batch_size', type=int, default=1024, help='Batch size')
+        parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
         parser.add_argument('--learning_rate', type=float, default=0.0035, help='Learning rate')
         parser.add_argument('--weight_decay', type=float, default=0.00001, help='Weight decay')
         parser.add_argument('--clip_value', type=int, default=0, help='Clip value of the wigths')
@@ -252,7 +261,7 @@ def parse_args():
             '--track_gradients', 
             type=int,
             choices=[0, 1],  # Only allow 0 or 1 as valid input
-            default=1,       # Default value: 0 for False 
+            default=0,       # Default value: 0 for False 
             help="track_gradients - 0 for False, 1 for True"
         )
         # --------------------------------------------------------------------

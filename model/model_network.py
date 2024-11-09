@@ -4,6 +4,7 @@ import torch
 import torch.nn.functional as F
 import math
 import monotonicnetworks as lmn
+from data_processing.data_loader import SyntheticDatasetGenerator
 from model.activation_layers import *
 
 # FeatureNN Class
@@ -367,8 +368,6 @@ class NeuralAdditiveModel(torch.nn.Module):
         if self.feature_dropout_val > 0.0:
             f_out = self.feature_dropout(f_out)
 
-        # print(f_out.sum(axis=-1).shape)
-        # print(self.bias.shape)
         outputs = f_out.sum(axis=-1) + self.bias #if I want positive bias: F.relu(self.bias)
         
         return outputs, f_out
@@ -518,29 +517,30 @@ class HierarchNeuralAdditiveModel(torch.nn.Module):
 
 
     def forward(self, x):
-        latent_outputs, phase1_gams_out = self.NAM_features(x)
+        concepts, phase1_gams_out = self.NAM_features(x)
 
-        if self.learn_only_concepts:
-            outputs = self.phase2(latent_outputs)  # Phase 2 computation using latent features
-            phase2_gams_out = None
-            return outputs, latent_outputs, phase1_gams_out, phase2_gams_out
+        if self.learn_only_concepts: # Phase 2 computation using latent features
+            outputs, phase2_gams_out = SyntheticDatasetGenerator.get_synthetic_data_phase2(concepts, num_classes=self.num_classes, is_test=False)
+            # outputs = self.phase2(concepts)  
+            # phase2_gams_out = None
+            return outputs, concepts, phase1_gams_out, phase2_gams_out
         else:
             if not self.hierarch_net:
                 # Apply activation based on the task
                 if self.final_activation:
-                    outputs = self.final_activation(latent_outputs)
+                    outputs = self.final_activation(concepts)
                 else:
-                    outputs = latent_outputs
+                    outputs = concepts
                     
                 return outputs, phase1_gams_out
             
             else:
-                outputs, phase2_gams_out = self.NAM_output(latent_outputs)
+                outputs, phase2_gams_out = self.NAM_output(concepts)
                 # Apply activation based on the task
                 if self.final_activation:
                     outputs = self.final_activation(outputs)
 
-                return outputs, latent_outputs, phase1_gams_out, phase2_gams_out
+                return outputs, concepts, phase1_gams_out, phase2_gams_out
         
     def phase2(self, concepts):
         outputs = []

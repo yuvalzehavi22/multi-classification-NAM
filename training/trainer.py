@@ -162,7 +162,7 @@ class Trainer:
                 self.optimizer.zero_grad()
 
                 # Forward pass
-                if self.model.hierarch_net:
+                if self.model.hierarch_net or self.model.learn_only_concepts:
                     logits, latent_features, phase1_gams_out, phase2_gams_out = self.model(X)
                 else:
                     logits, phase1_gams_out = self.model(X)
@@ -171,17 +171,10 @@ class Trainer:
                 # Calculate loss
                 loss = self.criterion(logits.view(-1), y.view(-1))
 
-                if 0:
-                    print('y shape:', y.shape)
-                    print('logits shape:', logits.shape)
-                    print(logits.view(-1)-y.view(-1))
-                    print(torch.mean(logits.view(-1)-y.view(-1)))
-
                 # Add L1, L2 regularization and Monotonicity Penalty for phase 1
                 #l1_penalty_phase1 = l1_penalty(phase1_gams_out, self.l1_lambda_phase1)
                 l2_penalty_phase1 = l2_penalty(phase1_gams_out, self.l2_lambda_phase1)
-                mono_penalty_phase1 = monotonic_penalty(X, logits, self.monotonicity_lambda_phase1)
-                loss += l2_penalty_phase1 + mono_penalty_phase1
+                loss += l2_penalty_phase1
                 #loss += l1_penalty_phase1 + l2_penalty_phase1 + mono_penalty_phase1
 
 
@@ -191,7 +184,7 @@ class Trainer:
                     loss += l1_penalty_phase1_arch
 
                 # Add L1, L2 regularization and Monotonicity Penalty for phase 2 if applicable
-                if phase2_gams_out is not None:
+                if self.model.hierarch_net and not self.model.learn_only_concepts:
                     l1_penalty_phase2 = l1_penalty(phase2_gams_out, self.l1_lambda_phase2)
                     l2_penalty_phase2 = l2_penalty(phase2_gams_out, self.l2_lambda_phase2)
                     mono_penalty_phase2 = monotonic_penalty(latent_features, logits, self.monotonicity_lambda_phase2)
@@ -276,15 +269,6 @@ class Trainer:
 
         if val_loader is None:
             self.save_model("best_model.pt")        
-        
-        # Log the final model to W&B as an artifact
-        artifact = wandb.Artifact('best_model', type='model')
-        artifact.add_file('best_model.pt')
-        wandb.log_artifact(artifact)
-
-        # # load the model and Log the predicted output distribution to W&B
-        # self.load_model("best_model.pt")
-        # self.plot_pred_data_histograms(loader)
         
         # # Plot the gradients at the end of training and log the plot to W&B
         # if all_param_groups:

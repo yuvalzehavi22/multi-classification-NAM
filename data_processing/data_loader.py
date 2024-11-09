@@ -221,7 +221,6 @@ class SyntheticDatasetGenerator:
             X = x_values.repeat(1, raw_features)
         else:
             X = Uniform(0, 3).sample((num_exp, raw_features))
-        print(X.shape)
 
         # Initialize dictionaries for shape functions and weights
         shape_functions = {}
@@ -279,7 +278,7 @@ class SyntheticDatasetGenerator:
                 elif int(feature_idx) == 2:
                     shape_functions[key] = out_weights[key] * (X[:, feature_idx]**2)  # Quadratic
                 elif int(feature_idx) == 3:
-                    shape_functions[key] = out_weights[key] * torch.exp(0.2*X[:, feature_idx])  # Exponential
+                    shape_functions[key] = out_weights[key] * torch.exp(0.3*X[:, feature_idx])  # Exponential
                 elif int(feature_idx) == 4:
                     out_weights[key] = 0
                     shape_functions[key] = out_weights[key] * X[:, feature_idx]
@@ -303,12 +302,10 @@ class SyntheticDatasetGenerator:
             else:
                 concepts = torch.cat((concepts, concept), dim=1)
 
-        print(concepts.shape)
-
         return X, concepts, shape_functions, out_weights
 
     @staticmethod      
-    def get_synthetic_data_phase2(concepts, num_classes=2, is_test=False):
+    def get_synthetic_data_phase2(concepts, num_classes=2, is_test=False, device=None):
         """
         Generate synthetic target values for Phase 2 using input features.
         
@@ -325,6 +322,9 @@ class SyntheticDatasetGenerator:
         y : torch.Tensor
             Generated target values for Phase 2.
         """
+        if device is None:
+            device = concepts.device
+
         if is_test:
             x_values = torch.linspace(round(float(concepts.min())), round(float(concepts.max())), concepts.size(0)).reshape(-1, 1) 
             concepts = x_values.repeat(1, concepts.size(1))
@@ -334,14 +334,14 @@ class SyntheticDatasetGenerator:
 
         # Generate y_i for each output class
         outputs = []
-        math_expressions = []
+        #math_expressions = []
 
         for j in range(num_classes):
-            output_sum = torch.zeros(concepts.size(0))
+            output_sum = torch.zeros(concepts.size(0), device=device)
 
             # Assign unique weights for this class
             class_weights = [0.5 + 0.1 * j, 0.3 + 0.05 * j, 0.2 + 0.02 * j, 0.1 + 0.03 * j]
-            expression = f"output_{j} = "
+            #expression = f"output_{j} = "
 
             for i in range(concepts.size(1)):
                 key = f"f_{j}_{i}"
@@ -349,30 +349,29 @@ class SyntheticDatasetGenerator:
                 # Choose different function types for each concept-to-output mapping
                 if (j + i) % 3 == 0:
                     shape_functions[key] = class_weights[0] * concepts[:, i]  # Linear
-                    expression += f"{class_weights[0]:.2f} * concept[:, {i}] + "
+                    #expression += f"{class_weights[0]:.2f} * concept[:, {i}] + "
                 elif (j + i) % 3 == 1:
                     shape_functions[key] = class_weights[1] * torch.exp(0.2 * concepts[:, i])  # Exponential
-                    expression += f"{class_weights[1]:.2f} * exp(0.2 * concept[:, {i}]) + "
+                    #expression += f"{class_weights[1]:.2f} * exp(0.2 * concept[:, {i}]) + "
                 elif (j + i) % 3 == 2:
                     shape_functions[key] = class_weights[2] * (concepts[:, i] ** 2)  # Quadratic
-                    expression += f"{class_weights[2]:.2f} * (concept[:, {i}] ** 2) + "
+                    #expression += f"{class_weights[2]:.2f} * (concept[:, {i}] ** 2) + "
                 else:
                     shape_functions[key] = class_weights[3] * (concepts[:, i]**3) #torch.sin(0.5 * concepts[:, i])  # Sinusoidal
-                    expression += f"{class_weights[3]:.2f} * (concept[:, {i}] ** 3) + "
+                    #expression += f"{class_weights[3]:.2f} * (concept[:, {i}] ** 3) + "
 
                 output_sum += shape_functions[key]  # Add the function to the current output sum
 
-            expression = expression.rstrip(' + ')  # Remove trailing ' + '
-            math_expressions.append(expression)
+            # expression = expression.rstrip(' + ')  # Remove trailing ' + '
+            # math_expressions.append(expression)
             outputs.append(output_sum.reshape(-1, 1))
 
         # Stack all outputs to form the final target matrix
         y = torch.cat(outputs, dim=1)
-        print(y.shape)
 
-        # Print the generated math expressions for each output
-        for exp in math_expressions:
-            print(exp)
+        # # Print the generated math expressions for each output
+        # for exp in math_expressions:
+        #     print(exp)
 
         return y, shape_functions
 

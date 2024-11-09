@@ -85,10 +85,10 @@ def parse_args():
         # ---------------------------------------------------------------
         # ----------------------- Data parameters -----------------------
         # ---------------------------------------------------------------
-        parser.add_argument('--num_exp', type=int, default=50000, help='Number of examples - for the synthetic data')
-        parser.add_argument('--in_features', type=int, default=10, help='Number of raw features')
-        parser.add_argument('--latent_dim', type=int, default=4, help='Number of context features (The output of phase1)')
-        parser.add_argument('--output_dim', type=int, default=2, help='Number of output classes')
+        parser.add_argument('--num_exp', type=int, default=1000, help='Number of examples - for the synthetic data')
+        parser.add_argument('--in_features', type=int, default=5, help='Number of raw features')
+        parser.add_argument('--latent_dim', type=int, default=3, help='Number of context features (The output of phase1)')
+        parser.add_argument('--output_dim', type=int, default=4, help='Number of output classes')
         parser.add_argument('--val_split', type=float, default=0.2, help='The percentage of the data that will make up the validation set')
         
         # ----------------------------------------------------------------------------------
@@ -110,9 +110,6 @@ def parse_args():
             default=0,       # Default value: 0 for False 
             help="Learn only concepts (the shape functions for phase2 are geven) - 0 for False, 1 for True"
         )
-        
-        # parser.add_argument('--GAM_block_layers_type_phase1', type=str, default='ReLU', help='options: ReLU, shallow_ExU, Monotonic, ExU_ReLU')
-        # parser.add_argument('--GAM_block_layers_type_phase2', type=str, default='Monotonic', help='options: ReLU, shallow_ExU, Monotonic, ExU_ReLU')
 
         parser.add_argument(
             "--featureNN_arch_phase1", 
@@ -278,7 +275,7 @@ def parse_args():
         parser.add_argument(
             "--lr_scheduler",
             type=str,
-            default="NoScheduler",
+            default="CosineAnnealingLR",
             help="one of 'StepLR', 'ReduceLROnPlateau', 'CyclicLR' or 'OneCycleLR', 'CosineAnnealingLR', NoScheduler",
         )
         # StepLR params

@@ -41,11 +41,23 @@ def main():
     seed_everything(args.seed)
 
     # DATA PROCESSING: Generate synthetic data for Phase 1 and Phase 2
-    # X, y_phase1, _, out_weights = SyntheticDatasetGenerator.get_synthetic_data_phase1(args.num_exp, args.in_features)
-    # y_phase2, _ = SyntheticDatasetGenerator.get_synthetic_data_phase2(y_phase1)
-
     X, y_phase1, _, out_weights = SyntheticDatasetGenerator.get_synthetic_data_phase1(num_exp=args.num_exp, raw_features=args.in_features, num_concepts=args.latent_dim, is_test=False, seed=args.seed)
     y_phase2, _ = SyntheticDatasetGenerator.get_synthetic_data_phase2(y_phase1, num_classes=args.output_dim, is_test=False)
+    print("Raw features shape:", X.shape)
+    print("Concepts shape:", y_phase1.shape)
+    print("Outputs shape:", y_phase2.shape)
+
+    #---------------------------------------------------------------------------------------
+    # -------------------------- creating feature to concept mask --------------------------
+    feature_to_concept_mask = torch.zeros(args.in_features, args.latent_dim)
+
+    # Convert out_weights dictionary keys into a tensor mask
+    for key, value in out_weights.items():
+        if value != 0:
+            output_idx, feature_idx = map(int, key.split('_')[1:])  # Extract indices from the key
+            feature_to_concept_mask[feature_idx, output_idx] = 1
+    #---------------------------------------------------------------------------------------
+    #---------------------------------------------------------------------------------------
 
     SyntheticDataset= True
     if SyntheticDataset:
@@ -72,9 +84,6 @@ def main():
     #concept_fig.show()
     target_fig = plot_data_histograms(values=y_phase2, values_name='Target',nbins=100, model_predict=False, save_path="data_processing/plots/")
     #target_fig.show()
-    
-    #print("Train size:", len(train_loader.dataset), "Val size:", len(val_loader.dataset))
-
 
     print("Training Hierarchical NAM...")
     print(f"Phase1 architecture: [{args.first_activate_layer_phase1}: {args.first_hidden_dim_phase1}, {args.hidden_activate_layer_phase1}: {args.hidden_dim_phase1}]")
@@ -126,9 +135,8 @@ def main():
     scheduler_params = set_lr_scheduler_params(args, args.lr_scheduler)
     print(scheduler_params)
 
-    # Initialize the Trainer class
-    #Trainer_concepts or Trainer
-    trainer = Trainer_concepts(
+    # Initialize the Trainer class (Trainer_concepts or Trainer)
+    trainer = Trainer(
         model=hirarch_nam,
         optimizer=args.optimizer,
         loss_function=None,

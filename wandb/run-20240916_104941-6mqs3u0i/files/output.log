@@ -1,0 +1,28 @@
+cuda
+torch.Size([50000, 10])
+torch.Size([50000, 4])
+torch.Size([50000, 2])
+torch.Size([10000, 10])
+torch.Size([10000, 4])
+torch.Size([10000, 2])
+Train size: 50000 Val size: 10000
+Training Hierarchical NAM...
+Phase1 architecture: [ReLU: 64, ReLU: [64, 32]]
+Phase2 architecture: [LipschitzMonotonic: 128, LipschitzMonotonic: [128, 64]]
+  0%|                                                                                                                                                                                                          | 0/1000 [00:00<?, ?it/s]
+Traceback (most recent call last):
+  File "run_model.py", line 136, in <module>
+    main()
+  File "run_model.py", line 125, in main
+    train_loss_history, val_loss_history = trainer.train(args, train_loader, val_loader)
+  File "/home/yuvalzehavi1/Repos/multi-classification-NAM/training/trainer.py", line 156, in train
+    epoch_loss = self.train_epoch(loader)
+  File "/home/yuvalzehavi1/Repos/multi-classification-NAM/training/trainer.py", line 217, in train_epoch
+    loss = self.train_batch(X, y)
+  File "/home/yuvalzehavi1/Repos/multi-classification-NAM/training/trainer.py", line 252, in train_batch
+    loss += l1_penalty_check(phase1_gams_out, self.l1_lambda_phase1)
+  File "/home/yuvalzehavi1/Repos/multi-classification-NAM/training/trainer_utils.py", line 31, in l1_penalty_check
+    l1_norm = sum(params.abs().sum())
+  File "/home/yuvalzehavi1/.local/lib/python3.8/site-packages/torch/_tensor.py", line 1043, in __iter__
+    raise TypeError("iteration over a 0-d tensor")
+TypeError: iteration over a 0-d tensor

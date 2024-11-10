@@ -1,0 +1,26 @@
+2024-09-16 12:35:12,112 INFO    MainThread:2614324 [wandb_setup.py:_flush():77] Current SDK version is 0.17.9
+2024-09-16 12:35:12,112 INFO    MainThread:2614324 [wandb_setup.py:_flush():77] Configure stats pid to 2614324
+2024-09-16 12:35:12,112 INFO    MainThread:2614324 [wandb_setup.py:_flush():77] Loading settings from /home/yuvalzehavi1/.config/wandb/settings
+2024-09-16 12:35:12,112 INFO    MainThread:2614324 [wandb_setup.py:_flush():77] Loading settings from /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/settings
+2024-09-16 12:35:12,113 INFO    MainThread:2614324 [wandb_setup.py:_flush():77] Loading settings from environment variables: {}
+2024-09-16 12:35:12,113 INFO    MainThread:2614324 [wandb_setup.py:_flush():77] Applying setup settings: {'_disable_service': False}
+2024-09-16 12:35:12,113 INFO    MainThread:2614324 [wandb_setup.py:_flush():77] Inferring run settings from compute environment: {'program_relpath': 'run_model.py', 'program_abspath': '/home/yuvalzehavi1/Repos/multi-classification-NAM/run_model.py', 'program': 'run_model.py'}
+2024-09-16 12:35:12,113 INFO    MainThread:2614324 [wandb_setup.py:_flush():77] Applying login settings: {}
+2024-09-16 12:35:12,113 INFO    MainThread:2614324 [wandb_init.py:_log_setup():524] Logging user logs to /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240916_123512-jitqckxu/logs/debug.log
+2024-09-16 12:35:12,113 INFO    MainThread:2614324 [wandb_init.py:_log_setup():525] Logging internal logs to /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240916_123512-jitqckxu/logs/debug-internal.log
+2024-09-16 12:35:12,113 INFO    MainThread:2614324 [wandb_init.py:init():608] calling init triggers
+2024-09-16 12:35:12,114 INFO    MainThread:2614324 [wandb_init.py:init():615] wandb.init called with sweep_config: {}
+config: {'seed': 42, 'num_exp': 50000, 'in_features': 10, 'latent_dim': 4, 'output_dim': 2, 'val_split': 0.2, 'task_type': 'regression', 'hierarch_net': True, 'GAM_block_layers_type_phase1': 'ReLU', 'GAM_block_layers_type_phase2': 'Monotonic', 'featureNN_arch_phase1': 'single_to_multi_output', 'featureNN_arch_phase2': 'parallel_single_output', 'first_activate_layer_phase1': 'ReLU', 'first_activate_layer_phase2': 'LipschitzMonotonic', 'first_hidden_dim_phase1': 64, 'first_hidden_dim_phase2': 128, 'shallow_phase1': False, 'shallow_phase2': False, 'hidden_activate_layer_phase1': 'ReLU', 'hidden_activate_layer_phase2': 'LipschitzMonotonic', 'hidden_dim_phase1': [64, 32], 'hidden_dim_phase2': [128, 64], 'hidden_dropout_phase1': 0.2, 'hidden_dropout_phase2': 0.0, 'feature_dropout_phase1': 0.3, 'feature_dropout_phase2': 0.0, 'weight_norms_kind_phase1': 'one-inf', 'weight_norms_kind_phase2': 'one-inf', 'group_size_phase1': 2, 'group_size_phase2': 2, 'monotonic_constraint_phase1': None, 'monotonic_constraint_phase2': [1], 'epochs': 1000, 'batch_size': 1024, 'learning_rate': 0.0001, 'weight_decay': 0.0001, 'clip_value': 0, 'l2_lambda_phase1': 0.0, 'l2_lambda_phase2': 0.0, 'l1_lambda_phase1': 1e-08, 'l1_lambda_phase2': 1e-06, 'eval_every': 50, 'early_stop_delta': 0.0, 'early_stop_patience': 200, 'optimizer': 'Adam', 'lr_scheduler': 'NoScheduler', 'rop_mode': 'min', 'rop_factor': 0.2, 'rop_patience': 10, 'rop_threshold': 0.001, 'rop_threshold_mode': 'abs', 'base_lr': 0.001, 'max_lr': 0.01, 'div_factor': 25, 'final_div_factor': 10000.0, 'n_cycles': 5, 'cycle_momentum': False, 'pct_step_up': 0.3, 'save_results': False}
+2024-09-16 12:35:12,114 INFO    MainThread:2614324 [wandb_init.py:init():658] starting backend
+2024-09-16 12:35:12,114 INFO    MainThread:2614324 [wandb_init.py:init():662] setting up manager
+2024-09-16 12:35:12,118 INFO    MainThread:2614324 [backend.py:_multiprocessing_setup():105] multiprocessing start_methods=fork,spawn,forkserver, using: spawn
+2024-09-16 12:35:12,120 INFO    MainThread:2614324 [wandb_init.py:init():670] backend started and connected
+2024-09-16 12:35:12,127 INFO    MainThread:2614324 [wandb_init.py:init():768] updated telemetry
+2024-09-16 12:35:12,170 INFO    MainThread:2614324 [wandb_init.py:init():801] communicating run to backend with 90.0 second timeout
+2024-09-16 12:35:12,863 INFO    MainThread:2614324 [wandb_init.py:init():852] starting run threads in backend
+2024-09-16 12:35:17,831 INFO    MainThread:2614324 [wandb_run.py:_console_start():2465] atexit reg
+2024-09-16 12:35:17,831 INFO    MainThread:2614324 [wandb_run.py:_redirect():2311] redirect: wrap_raw
+2024-09-16 12:35:17,832 INFO    MainThread:2614324 [wandb_run.py:_redirect():2376] Wrapping output streams.
+2024-09-16 12:35:17,832 INFO    MainThread:2614324 [wandb_run.py:_redirect():2401] Redirects installed.
+2024-09-16 12:35:17,836 INFO    MainThread:2614324 [wandb_init.py:init():895] run started, returning control to user process
+2024-09-16 13:28:48,689 WARNING MsgRouterThr:2614324 [router.py:message_loop():77] message_loop has been closed

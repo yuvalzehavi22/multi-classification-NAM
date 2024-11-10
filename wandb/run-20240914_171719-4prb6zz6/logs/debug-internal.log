@@ -1,0 +1,322 @@
+2024-09-14 17:17:19,980 INFO    StreamThr :2398374 [internal.py:wandb_internal():85] W&B internal server running at pid: 2398374, started at: 2024-09-14 17:17:19.978801
+2024-09-14 17:17:19,987 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status
+2024-09-14 17:17:19,993 INFO    WriterThread:2398374 [datastore.py:open_for_write():87] open: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/run-4prb6zz6.wandb
+2024-09-14 17:17:19,995 DEBUG   SenderThread:2398374 [sender.py:send():391] send: header
+2024-09-14 17:17:20,044 DEBUG   SenderThread:2398374 [sender.py:send():391] send: run
+2024-09-14 17:17:20,652 INFO    SenderThread:2398374 [dir_watcher.py:__init__():211] watching files in: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files
+2024-09-14 17:17:20,652 INFO    SenderThread:2398374 [sender.py:_start_run_threads():1200] run started: 4prb6zz6 with start time 1726323439.978099
+2024-09-14 17:17:20,683 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: run_start
+2024-09-14 17:17:20,736 DEBUG   HandlerThread:2398374 [system_info.py:__init__():26] System info init
+2024-09-14 17:17:20,736 DEBUG   HandlerThread:2398374 [system_info.py:__init__():41] System info init done
+2024-09-14 17:17:20,736 INFO    HandlerThread:2398374 [system_monitor.py:start():194] Starting system monitor
+2024-09-14 17:17:20,736 INFO    SystemMonitor:2398374 [system_monitor.py:_start():158] Starting system asset monitoring threads
+2024-09-14 17:17:20,737 INFO    HandlerThread:2398374 [system_monitor.py:probe():214] Collecting system info
+2024-09-14 17:17:20,738 INFO    SystemMonitor:2398374 [interfaces.py:start():188] Started cpu monitoring
+2024-09-14 17:17:20,740 INFO    SystemMonitor:2398374 [interfaces.py:start():188] Started disk monitoring
+2024-09-14 17:17:20,743 INFO    SystemMonitor:2398374 [interfaces.py:start():188] Started gpu monitoring
+2024-09-14 17:17:20,745 INFO    SystemMonitor:2398374 [interfaces.py:start():188] Started memory monitoring
+2024-09-14 17:17:20,747 INFO    SystemMonitor:2398374 [interfaces.py:start():188] Started network monitoring
+2024-09-14 17:17:21,571 DEBUG   HandlerThread:2398374 [system_info.py:probe():152] Probing system
+2024-09-14 17:17:21,590 DEBUG   HandlerThread:2398374 [system_info.py:_probe_git():137] Probing git
+2024-09-14 17:17:21,634 DEBUG   HandlerThread:2398374 [system_info.py:_probe_git():145] Probing git done
+2024-09-14 17:17:21,634 DEBUG   HandlerThread:2398374 [system_info.py:probe():200] Probing system done
+2024-09-14 17:17:21,634 DEBUG   HandlerThread:2398374 [system_monitor.py:probe():223] {'os': 'Linux-5.15.0-118-generic-x86_64-with-glibc2.10', 'python': '3.8.8', 'heartbeatAt': '2024-09-14T14:17:21.571741', 'startedAt': '2024-09-14T14:17:19.963385', 'docker': None, 'cuda': None, 'args': ('--seed', '42', '--eval_every', '100', '--featureNN_arch_phase1', 'single_to_multi_output', '--featureNN_arch_phase2', 'parallel_single_output', '--learning_rate', '0.001'), 'state': 'running', 'program': 'run_model.py', 'codePathLocal': 'run_model.py', 'codePath': 'run_model.py', 'git': {'remote': 'git@github.com:yuvalzehavi22/multi-classification-NAM.git', 'commit': 'e3397ac7abe53940251d3e3fbbd352e5bf5169c4'}, 'email': 'yuvalzehavi22@gmail.com', 'root': '/home/yuvalzehavi1/Repos/multi-classification-NAM', 'host': 'ubuntu', 'username': 'yuvalzehavi1', 'executable': '/opt/anaconda3/bin/python', 'cpu_count': 20, 'cpu_count_logical': 40, 'cpu_freq': {'current': 816.4710749999998, 'min': 800.0, 'max': 3000.0}, 'cpu_freq_per_core': [{'current': 800.133, 'min': 800.0, 'max': 3000.0}, {'current': 800.871, 'min': 800.0, 'max': 3000.0}, {'current': 800.483, 'min': 800.0, 'max': 3000.0}, {'current': 800.082, 'min': 800.0, 'max': 3000.0}, {'current': 804.227, 'min': 800.0, 'max': 3000.0}, {'current': 800.042, 'min': 800.0, 'max': 3000.0}, {'current': 800.096, 'min': 800.0, 'max': 3000.0}, {'current': 800.081, 'min': 800.0, 'max': 3000.0}, {'current': 800.579, 'min': 800.0, 'max': 3000.0}, {'current': 800.067, 'min': 800.0, 'max': 3000.0}, {'current': 800.402, 'min': 800.0, 'max': 3000.0}, {'current': 800.575, 'min': 800.0, 'max': 3000.0}, {'current': 800.21, 'min': 800.0, 'max': 3000.0}, {'current': 800.209, 'min': 800.0, 'max': 3000.0}, {'current': 800.206, 'min': 800.0, 'max': 3000.0}, {'current': 800.38, 'min': 800.0, 'max': 3000.0}, {'current': 800.436, 'min': 800.0, 'max': 3000.0}, {'current': 800.508, 'min': 800.0, 'max': 3000.0}, {'current': 800.558, 'min': 800.0, 'max': 3000.0}, {'current': 800.399, 'min': 800.0, 'max': 3000.0}, {'current': 800.072, 'min': 800.0, 'max': 3000.0}, {'current': 800.064, 'min': 800.0, 'max': 3000.0}, {'current': 800.042, 'min': 800.0, 'max': 3000.0}, {'current': 800.134, 'min': 800.0, 'max': 3000.0}, {'current': 1080.399, 'min': 800.0, 'max': 3000.0}, {'current': 800.05, 'min': 800.0, 'max': 3000.0}, {'current': 800.145, 'min': 800.0, 'max': 3000.0}, {'current': 800.231, 'min': 800.0, 'max': 3000.0}, {'current': 800.18, 'min': 800.0, 'max': 3000.0}, {'current': 800.084, 'min': 800.0, 'max': 3000.0}, {'current': 800.405, 'min': 800.0, 'max': 3000.0}, {'current': 800.553, 'min': 800.0, 'max': 3000.0}, {'current': 800.394, 'min': 800.0, 'max': 3000.0}, {'current': 800.497, 'min': 800.0, 'max': 3000.0}, {'current': 800.552, 'min': 800.0, 'max': 3000.0}, {'current': 800.139, 'min': 800.0, 'max': 3000.0}, {'current': 800.379, 'min': 800.0, 'max': 3000.0}, {'current': 800.459, 'min': 800.0, 'max': 3000.0}, {'current': 800.47, 'min': 800.0, 'max': 3000.0}, {'current': 800.401, 'min': 800.0, 'max': 3000.0}], 'disk': {'/': {'total': 438.5479202270508, 'used': 134.44242095947266}}, 'gpu': 'NVIDIA GeForce RTX 2080 Ti', 'gpu_count': 8, 'gpu_devices': [{'name': 'NVIDIA GeForce RTX 2080 Ti', 'memory_total': 11811160064}, {'name': 'NVIDIA GeForce RTX 2080 Ti', 'memory_total': 11811160064}, {'name': 'NVIDIA GeForce RTX 2080 Ti', 'memory_total': 11811160064}, {'name': 'NVIDIA GeForce RTX 2080 Ti', 'memory_total': 11811160064}, {'name': 'NVIDIA GeForce RTX 2080 Ti', 'memory_total': 11811160064}, {'name': 'NVIDIA GeForce RTX 2080 Ti', 'memory_total': 11811160064}, {'name': 'NVIDIA GeForce RTX 2080 Ti', 'memory_total': 11811160064}, {'name': 'NVIDIA GeForce RTX 2080 Ti', 'memory_total': 11811160064}], 'memory': {'total': 251.5148582458496}}
+2024-09-14 17:17:21,635 INFO    HandlerThread:2398374 [system_monitor.py:probe():224] Finished collecting system info
+2024-09-14 17:17:21,635 INFO    HandlerThread:2398374 [system_monitor.py:probe():227] Publishing system info
+2024-09-14 17:17:21,635 DEBUG   HandlerThread:2398374 [system_info.py:_save_conda():209] Saving list of conda packages installed into the current environment
+2024-09-14 17:17:21,659 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_created():271] file/dir created: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/conda-environment.yaml
+2024-09-14 17:17:25,480 DEBUG   HandlerThread:2398374 [system_info.py:_save_conda():224] Saving conda packages done
+2024-09-14 17:17:25,483 INFO    HandlerThread:2398374 [system_monitor.py:probe():229] Finished publishing system info
+2024-09-14 17:17:25,492 DEBUG   SenderThread:2398374 [sender.py:send():391] send: files
+2024-09-14 17:17:25,493 INFO    SenderThread:2398374 [sender.py:_save_file():1466] saving file wandb-metadata.json with policy now
+2024-09-14 17:17:25,494 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status_report
+2024-09-14 17:17:25,656 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/conda-environment.yaml
+2024-09-14 17:17:25,657 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_created():271] file/dir created: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/wandb-metadata.json
+2024-09-14 17:17:25,720 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: python_packages
+2024-09-14 17:17:25,721 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: python_packages
+2024-09-14 17:17:25,724 DEBUG   SenderThread:2398374 [sender.py:send():391] send: telemetry
+2024-09-14 17:17:25,734 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: stop_status
+2024-09-14 17:17:25,735 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: stop_status
+2024-09-14 17:17:25,742 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: internal_messages
+2024-09-14 17:17:26,397 INFO    wandb-upload_0:2398374 [upload_job.py:push():130] Uploaded file /tmp/tmpizb4gddcwandb/jvj2plg2-wandb-metadata.json
+2024-09-14 17:17:26,657 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_created():271] file/dir created: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:17:26,658 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_created():271] file/dir created: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/requirements.txt
+2024-09-14 17:17:28,658 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:17:30,217 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: partial_history
+2024-09-14 17:17:30,223 DEBUG   SenderThread:2398374 [sender.py:send():391] send: history
+2024-09-14 17:17:30,224 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: summary_record
+2024-09-14 17:17:30,228 INFO    SenderThread:2398374 [sender.py:_save_file():1466] saving file wandb-summary.json with policy end
+2024-09-14 17:17:30,229 DEBUG   SenderThread:2398374 [sender.py:send():391] send: telemetry
+2024-09-14 17:17:30,229 DEBUG   SenderThread:2398374 [sender.py:send():391] send: files
+2024-09-14 17:17:30,660 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_created():271] file/dir created: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/wandb-summary.json
+2024-09-14 17:17:30,723 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status_report
+2024-09-14 17:17:32,662 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:17:33,216 DEBUG   SenderThread:2398374 [sender.py:send():391] send: files
+2024-09-14 17:17:35,511 DEBUG   SenderThread:2398374 [sender.py:send():391] send: files
+2024-09-14 17:17:35,723 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: internal_messages
+2024-09-14 17:17:35,724 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status_report
+2024-09-14 17:17:36,664 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:17:37,770 DEBUG   SenderThread:2398374 [sender.py:send():391] send: files
+2024-09-14 17:17:38,665 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:17:39,897 DEBUG   SenderThread:2398374 [sender.py:send():391] send: files
+2024-09-14 17:17:40,667 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:17:40,851 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: stop_status
+2024-09-14 17:17:40,853 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: stop_status
+2024-09-14 17:17:41,138 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status_report
+2024-09-14 17:17:42,197 DEBUG   SenderThread:2398374 [sender.py:send():391] send: files
+2024-09-14 17:17:42,668 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:17:44,435 DEBUG   SenderThread:2398374 [sender.py:send():391] send: files
+2024-09-14 17:17:44,670 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:17:45,723 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: internal_messages
+2024-09-14 17:17:46,553 DEBUG   SenderThread:2398374 [sender.py:send():391] send: files
+2024-09-14 17:17:46,554 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status_report
+2024-09-14 17:17:46,671 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:17:48,672 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:17:48,796 DEBUG   SenderThread:2398374 [sender.py:send():391] send: files
+2024-09-14 17:17:50,674 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:17:50,908 DEBUG   SenderThread:2398374 [sender.py:send():391] send: files
+2024-09-14 17:17:51,957 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status_report
+2024-09-14 17:17:52,677 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:17:52,678 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/config.yaml
+2024-09-14 17:17:53,148 DEBUG   SenderThread:2398374 [sender.py:send():391] send: files
+2024-09-14 17:17:54,678 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:17:55,723 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: internal_messages
+2024-09-14 17:17:55,853 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: stop_status
+2024-09-14 17:17:55,854 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: stop_status
+2024-09-14 17:17:56,680 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:17:58,444 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status_report
+2024-09-14 17:17:58,681 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:18:00,682 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:18:02,684 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:18:03,747 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status_report
+2024-09-14 17:18:05,724 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: internal_messages
+2024-09-14 17:18:06,687 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:18:08,688 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:18:09,395 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status_report
+2024-09-14 17:18:10,689 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:18:10,851 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: stop_status
+2024-09-14 17:18:10,853 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: stop_status
+2024-09-14 17:18:12,690 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:18:14,691 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:18:14,699 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status_report
+2024-09-14 17:18:15,724 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: internal_messages
+2024-09-14 17:18:16,693 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:18:18,695 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:18:19,072 DEBUG   SenderThread:2398374 [sender.py:send():391] send: files
+2024-09-14 17:18:20,074 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status_report
+2024-09-14 17:18:20,696 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:18:20,748 DEBUG   SystemMonitor:2398374 [system_monitor.py:_start():172] Starting system metrics aggregation loop
+2024-09-14 17:18:20,756 DEBUG   SenderThread:2398374 [sender.py:send():391] send: stats
+2024-09-14 17:18:22,698 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:18:24,699 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:18:25,378 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status_report
+2024-09-14 17:18:25,762 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: internal_messages
+2024-09-14 17:18:25,852 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: stop_status
+2024-09-14 17:18:25,853 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: stop_status
+2024-09-14 17:18:26,701 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:18:30,704 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:18:30,854 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status_report
+2024-09-14 17:18:32,705 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:18:34,706 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:18:35,763 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: internal_messages
+2024-09-14 17:18:35,901 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status_report
+2024-09-14 17:18:38,711 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:18:40,712 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:18:40,853 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: stop_status
+2024-09-14 17:18:40,854 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: stop_status
+2024-09-14 17:18:41,088 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status_report
+2024-09-14 17:18:42,713 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:18:45,763 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: internal_messages
+2024-09-14 17:18:46,716 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:18:46,855 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status_report
+2024-09-14 17:18:48,718 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:18:50,719 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:18:50,761 DEBUG   SenderThread:2398374 [sender.py:send():391] send: stats
+2024-09-14 17:18:51,858 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status_report
+2024-09-14 17:18:54,722 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:18:55,763 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: internal_messages
+2024-09-14 17:18:55,852 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: stop_status
+2024-09-14 17:18:55,853 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: stop_status
+2024-09-14 17:18:56,723 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:18:57,142 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status_report
+2024-09-14 17:19:00,726 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:19:02,694 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status_report
+2024-09-14 17:19:04,729 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:19:05,763 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: internal_messages
+2024-09-14 17:19:06,730 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:19:07,874 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status_report
+2024-09-14 17:19:10,733 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:19:10,853 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: stop_status
+2024-09-14 17:19:10,854 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: stop_status
+2024-09-14 17:19:13,244 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status_report
+2024-09-14 17:19:14,737 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:19:15,764 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: internal_messages
+2024-09-14 17:19:16,738 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:19:18,703 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status_report
+2024-09-14 17:19:20,741 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:19:20,766 DEBUG   SenderThread:2398374 [sender.py:send():391] send: stats
+2024-09-14 17:19:24,141 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status_report
+2024-09-14 17:19:24,744 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:19:25,765 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: internal_messages
+2024-09-14 17:19:25,853 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: stop_status
+2024-09-14 17:19:25,854 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: stop_status
+2024-09-14 17:19:26,745 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:19:29,755 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status_report
+2024-09-14 17:19:30,748 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:19:34,751 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:19:35,004 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status_report
+2024-09-14 17:19:35,839 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: internal_messages
+2024-09-14 17:19:36,753 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:19:40,712 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status_report
+2024-09-14 17:19:40,756 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:19:40,878 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: stop_status
+2024-09-14 17:19:40,879 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: stop_status
+2024-09-14 17:19:42,757 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:19:45,839 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: internal_messages
+2024-09-14 17:19:45,877 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status_report
+2024-09-14 17:19:46,760 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:19:48,593 DEBUG   SenderThread:2398374 [sender.py:send():391] send: exit
+2024-09-14 17:19:48,593 INFO    SenderThread:2398374 [sender.py:send_exit():598] handling exit code: 0
+2024-09-14 17:19:48,595 INFO    SenderThread:2398374 [sender.py:send_exit():600] handling runtime: 147
+2024-09-14 17:19:48,596 INFO    SenderThread:2398374 [sender.py:_save_file():1466] saving file wandb-summary.json with policy end
+2024-09-14 17:19:48,597 INFO    SenderThread:2398374 [sender.py:send_exit():606] send defer
+2024-09-14 17:19:48,598 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: defer
+2024-09-14 17:19:48,598 INFO    HandlerThread:2398374 [handler.py:handle_request_defer():184] handle defer: 0
+2024-09-14 17:19:48,599 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: defer
+2024-09-14 17:19:48,599 INFO    SenderThread:2398374 [sender.py:send_request_defer():622] handle sender defer: 0
+2024-09-14 17:19:48,599 INFO    SenderThread:2398374 [sender.py:transition_state():626] send defer: 1
+2024-09-14 17:19:48,600 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: defer
+2024-09-14 17:19:48,600 INFO    HandlerThread:2398374 [handler.py:handle_request_defer():184] handle defer: 1
+2024-09-14 17:19:48,600 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: defer
+2024-09-14 17:19:48,601 INFO    SenderThread:2398374 [sender.py:send_request_defer():622] handle sender defer: 1
+2024-09-14 17:19:48,601 INFO    SenderThread:2398374 [sender.py:transition_state():626] send defer: 2
+2024-09-14 17:19:48,601 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: defer
+2024-09-14 17:19:48,601 INFO    HandlerThread:2398374 [handler.py:handle_request_defer():184] handle defer: 2
+2024-09-14 17:19:48,601 INFO    HandlerThread:2398374 [system_monitor.py:finish():203] Stopping system monitor
+2024-09-14 17:19:48,602 DEBUG   SystemMonitor:2398374 [system_monitor.py:_start():179] Finished system metrics aggregation loop
+2024-09-14 17:19:48,603 DEBUG   SystemMonitor:2398374 [system_monitor.py:_start():183] Publishing last batch of metrics
+2024-09-14 17:19:48,608 INFO    HandlerThread:2398374 [interfaces.py:finish():200] Joined cpu monitor
+2024-09-14 17:19:48,608 INFO    HandlerThread:2398374 [interfaces.py:finish():200] Joined disk monitor
+2024-09-14 17:19:48,762 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/wandb-summary.json
+2024-09-14 17:19:49,703 INFO    HandlerThread:2398374 [interfaces.py:finish():200] Joined gpu monitor
+2024-09-14 17:19:49,705 INFO    HandlerThread:2398374 [interfaces.py:finish():200] Joined memory monitor
+2024-09-14 17:19:49,706 INFO    HandlerThread:2398374 [interfaces.py:finish():200] Joined network monitor
+2024-09-14 17:19:49,707 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: poll_exit
+2024-09-14 17:19:49,709 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: defer
+2024-09-14 17:19:49,709 INFO    SenderThread:2398374 [sender.py:send_request_defer():622] handle sender defer: 2
+2024-09-14 17:19:49,709 INFO    SenderThread:2398374 [sender.py:transition_state():626] send defer: 3
+2024-09-14 17:19:49,710 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: defer
+2024-09-14 17:19:49,710 INFO    HandlerThread:2398374 [handler.py:handle_request_defer():184] handle defer: 3
+2024-09-14 17:19:49,711 DEBUG   SenderThread:2398374 [sender.py:send():391] send: stats
+2024-09-14 17:19:49,714 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: poll_exit
+2024-09-14 17:19:49,715 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: defer
+2024-09-14 17:19:49,716 INFO    SenderThread:2398374 [sender.py:send_request_defer():622] handle sender defer: 3
+2024-09-14 17:19:49,716 INFO    SenderThread:2398374 [sender.py:transition_state():626] send defer: 4
+2024-09-14 17:19:49,716 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: defer
+2024-09-14 17:19:49,717 INFO    HandlerThread:2398374 [handler.py:handle_request_defer():184] handle defer: 4
+2024-09-14 17:19:49,717 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: defer
+2024-09-14 17:19:49,717 INFO    SenderThread:2398374 [sender.py:send_request_defer():622] handle sender defer: 4
+2024-09-14 17:19:49,718 INFO    SenderThread:2398374 [sender.py:transition_state():626] send defer: 5
+2024-09-14 17:19:49,718 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: defer
+2024-09-14 17:19:49,718 INFO    HandlerThread:2398374 [handler.py:handle_request_defer():184] handle defer: 5
+2024-09-14 17:19:49,719 DEBUG   SenderThread:2398374 [sender.py:send():391] send: summary
+2024-09-14 17:19:49,721 INFO    SenderThread:2398374 [sender.py:_save_file():1466] saving file wandb-summary.json with policy end
+2024-09-14 17:19:49,722 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: defer
+2024-09-14 17:19:49,722 INFO    SenderThread:2398374 [sender.py:send_request_defer():622] handle sender defer: 5
+2024-09-14 17:19:49,723 INFO    SenderThread:2398374 [sender.py:transition_state():626] send defer: 6
+2024-09-14 17:19:49,723 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: defer
+2024-09-14 17:19:49,723 INFO    HandlerThread:2398374 [handler.py:handle_request_defer():184] handle defer: 6
+2024-09-14 17:19:49,724 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: defer
+2024-09-14 17:19:49,724 INFO    SenderThread:2398374 [sender.py:send_request_defer():622] handle sender defer: 6
+2024-09-14 17:19:49,725 INFO    SenderThread:2398374 [sender.py:transition_state():626] send defer: 7
+2024-09-14 17:19:49,725 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: status_report
+2024-09-14 17:19:49,725 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: defer
+2024-09-14 17:19:49,726 INFO    HandlerThread:2398374 [handler.py:handle_request_defer():184] handle defer: 7
+2024-09-14 17:19:49,727 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: defer
+2024-09-14 17:19:49,727 INFO    SenderThread:2398374 [sender.py:send_request_defer():622] handle sender defer: 7
+2024-09-14 17:19:49,763 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/wandb-summary.json
+2024-09-14 17:19:50,348 INFO    SenderThread:2398374 [sender.py:transition_state():626] send defer: 8
+2024-09-14 17:19:50,348 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: defer
+2024-09-14 17:19:50,349 INFO    HandlerThread:2398374 [handler.py:handle_request_defer():184] handle defer: 8
+2024-09-14 17:19:50,349 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: defer
+2024-09-14 17:19:50,350 INFO    SenderThread:2398374 [sender.py:send_request_defer():622] handle sender defer: 8
+2024-09-14 17:19:50,351 INFO    SenderThread:2398374 [job_builder.py:build():443] Attempting to build job artifact
+2024-09-14 17:19:50,354 INFO    SenderThread:2398374 [job_builder.py:_get_source_type():572] is repo sourced job
+2024-09-14 17:19:50,431 INFO    SenderThread:2398374 [job_builder.py:build():548] adding wandb-job metadata file
+2024-09-14 17:19:50,439 INFO    SenderThread:2398374 [sender.py:transition_state():626] send defer: 9
+2024-09-14 17:19:50,441 DEBUG   SenderThread:2398374 [sender.py:send():391] send: artifact
+2024-09-14 17:19:50,441 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: defer
+2024-09-14 17:19:50,447 INFO    HandlerThread:2398374 [handler.py:handle_request_defer():184] handle defer: 9
+2024-09-14 17:19:50,597 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: poll_exit
+2024-09-14 17:19:50,764 INFO    Thread-12 :2398374 [dir_watcher.py:_on_file_modified():288] file/dir modified: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:19:51,932 INFO    wandb-upload_1:2398374 [upload_job.py:push():88] Uploaded file /home/yuvalzehavi1/.local/share/wandb/artifacts/staging/tmpxklcgh5m
+2024-09-14 17:19:52,665 INFO    wandb-upload_0:2398374 [upload_job.py:push():88] Uploaded file /tmp/tmpix3kpg2e/wandb-job.json
+2024-09-14 17:19:53,849 INFO    SenderThread:2398374 [sender.py:send_artifact():1549] sent artifact job-git_github.com_yuvalzehavi22_multi-classification-NAM.git_run_model.py - {'id': 'QXJ0aWZhY3Q6MTIyODE3NTU1MA==', 'state': 'PENDING', 'artifactSequence': {'id': 'QXJ0aWZhY3RDb2xsZWN0aW9uOjQ1NjExNDI5NA==', 'latestArtifact': None}}
+2024-09-14 17:19:53,850 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: defer
+2024-09-14 17:19:53,850 INFO    SenderThread:2398374 [sender.py:send_request_defer():622] handle sender defer: 9
+2024-09-14 17:19:53,850 INFO    SenderThread:2398374 [dir_watcher.py:finish():358] shutting down directory watcher
+2024-09-14 17:19:54,767 INFO    SenderThread:2398374 [dir_watcher.py:finish():388] scan: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files
+2024-09-14 17:19:54,768 INFO    SenderThread:2398374 [dir_watcher.py:finish():402] scan save: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log output.log
+2024-09-14 17:19:54,769 INFO    SenderThread:2398374 [dir_watcher.py:finish():402] scan save: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/wandb-summary.json wandb-summary.json
+2024-09-14 17:19:54,769 INFO    SenderThread:2398374 [dir_watcher.py:finish():402] scan save: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/requirements.txt requirements.txt
+2024-09-14 17:19:54,777 INFO    SenderThread:2398374 [dir_watcher.py:finish():402] scan save: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/wandb-metadata.json wandb-metadata.json
+2024-09-14 17:19:54,790 INFO    SenderThread:2398374 [dir_watcher.py:finish():402] scan save: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/conda-environment.yaml conda-environment.yaml
+2024-09-14 17:19:54,790 INFO    SenderThread:2398374 [dir_watcher.py:finish():402] scan save: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/config.yaml config.yaml
+2024-09-14 17:19:54,791 INFO    SenderThread:2398374 [sender.py:transition_state():626] send defer: 10
+2024-09-14 17:19:54,795 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: poll_exit
+2024-09-14 17:19:54,807 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: defer
+2024-09-14 17:19:54,807 INFO    HandlerThread:2398374 [handler.py:handle_request_defer():184] handle defer: 10
+2024-09-14 17:19:54,811 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: defer
+2024-09-14 17:19:54,811 INFO    SenderThread:2398374 [sender.py:send_request_defer():622] handle sender defer: 10
+2024-09-14 17:19:54,811 INFO    SenderThread:2398374 [file_pusher.py:finish():169] shutting down file pusher
+2024-09-14 17:19:55,237 INFO    wandb-upload_1:2398374 [upload_job.py:push():130] Uploaded file /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/output.log
+2024-09-14 17:19:55,277 INFO    wandb-upload_2:2398374 [upload_job.py:push():130] Uploaded file /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/requirements.txt
+2024-09-14 17:19:55,551 INFO    wandb-upload_0:2398374 [upload_job.py:push():130] Uploaded file /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/wandb-summary.json
+2024-09-14 17:19:55,568 INFO    wandb-upload_4:2398374 [upload_job.py:push():130] Uploaded file /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/config.yaml
+2024-09-14 17:19:55,597 INFO    wandb-upload_3:2398374 [upload_job.py:push():130] Uploaded file /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/files/conda-environment.yaml
+2024-09-14 17:19:55,602 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: keepalive
+2024-09-14 17:19:55,603 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: poll_exit
+2024-09-14 17:19:55,604 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: poll_exit
+2024-09-14 17:19:55,798 INFO    Thread-11 :2398374 [sender.py:transition_state():626] send defer: 11
+2024-09-14 17:19:55,798 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: defer
+2024-09-14 17:19:55,799 INFO    HandlerThread:2398374 [handler.py:handle_request_defer():184] handle defer: 11
+2024-09-14 17:19:55,800 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: defer
+2024-09-14 17:19:55,800 INFO    SenderThread:2398374 [sender.py:send_request_defer():622] handle sender defer: 11
+2024-09-14 17:19:55,800 INFO    SenderThread:2398374 [file_pusher.py:join():175] waiting for file pusher
+2024-09-14 17:19:55,801 INFO    SenderThread:2398374 [sender.py:transition_state():626] send defer: 12
+2024-09-14 17:19:55,801 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: defer
+2024-09-14 17:19:55,802 INFO    HandlerThread:2398374 [handler.py:handle_request_defer():184] handle defer: 12
+2024-09-14 17:19:55,803 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: defer
+2024-09-14 17:19:55,803 INFO    SenderThread:2398374 [sender.py:send_request_defer():622] handle sender defer: 12
+2024-09-14 17:19:55,803 INFO    SenderThread:2398374 [file_stream.py:finish():601] file stream finish called
+2024-09-14 17:19:56,465 INFO    SenderThread:2398374 [file_stream.py:finish():605] file stream finish is done
+2024-09-14 17:19:56,465 INFO    SenderThread:2398374 [sender.py:transition_state():626] send defer: 13
+2024-09-14 17:19:56,466 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: defer
+2024-09-14 17:19:56,466 INFO    HandlerThread:2398374 [handler.py:handle_request_defer():184] handle defer: 13
+2024-09-14 17:19:56,467 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: defer
+2024-09-14 17:19:56,467 INFO    SenderThread:2398374 [sender.py:send_request_defer():622] handle sender defer: 13
+2024-09-14 17:19:56,468 INFO    SenderThread:2398374 [sender.py:transition_state():626] send defer: 14
+2024-09-14 17:19:56,469 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: defer
+2024-09-14 17:19:56,469 DEBUG   SenderThread:2398374 [sender.py:send():391] send: final
+2024-09-14 17:19:56,469 INFO    HandlerThread:2398374 [handler.py:handle_request_defer():184] handle defer: 14
+2024-09-14 17:19:56,470 DEBUG   SenderThread:2398374 [sender.py:send():391] send: footer
+2024-09-14 17:19:56,470 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: defer
+2024-09-14 17:19:56,471 INFO    SenderThread:2398374 [sender.py:send_request_defer():622] handle sender defer: 14
+2024-09-14 17:19:56,472 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: poll_exit
+2024-09-14 17:19:56,474 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: poll_exit
+2024-09-14 17:19:56,475 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: server_info
+2024-09-14 17:19:56,476 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: server_info
+2024-09-14 17:19:56,483 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: poll_exit
+2024-09-14 17:19:56,485 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: get_summary
+2024-09-14 17:19:56,486 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: sampled_history
+2024-09-14 17:19:56,488 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: internal_messages
+2024-09-14 17:19:56,664 DEBUG   SenderThread:2398374 [sender.py:send_request():418] send_request: poll_exit
+2024-09-14 17:19:56,666 INFO    MainThread:2398374 [wandb_run.py:_footer_history_summary_info():4088] rendering history
+2024-09-14 17:19:56,667 INFO    MainThread:2398374 [wandb_run.py:_footer_history_summary_info():4120] rendering summary
+2024-09-14 17:19:56,667 INFO    MainThread:2398374 [wandb_run.py:_footer_sync_info():4047] logging synced files
+2024-09-14 17:19:56,669 DEBUG   HandlerThread:2398374 [handler.py:handle_request():158] handle_request: shutdown
+2024-09-14 17:19:56,669 INFO    HandlerThread:2398374 [handler.py:finish():884] shutting down handler
+2024-09-14 17:19:57,485 INFO    WriterThread:2398374 [datastore.py:close():296] close: /home/yuvalzehavi1/Repos/multi-classification-NAM/wandb/run-20240914_171719-4prb6zz6/run-4prb6zz6.wandb
+2024-09-14 17:19:57,665 INFO    SenderThread:2398374 [sender.py:finish():1631] shutting down sender
+2024-09-14 17:19:57,666 INFO    SenderThread:2398374 [file_pusher.py:finish():169] shutting down file pusher
+2024-09-14 17:19:57,666 INFO    SenderThread:2398374 [file_pusher.py:join():175] waiting for file pusher

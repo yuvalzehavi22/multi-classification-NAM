@@ -294,6 +294,7 @@ class NeuralAdditiveModel(torch.nn.Module):
                  weight_norms_kind: str = "one-inf", 
                  group_size: int = 2, 
                  monotonic_constraint: list = None,
+                 feature_to_concept_mask: torch.Tensor = None, 
                  ):
         super().__init__()
 
@@ -338,6 +339,14 @@ class NeuralAdditiveModel(torch.nn.Module):
         self.weight_norms_kind_first_layer = weight_norms_kind
         self.activation_function_group_size = group_size
         self.monotonic_constraint = monotonic_constraint
+        
+        # Validate the feature-to-concept mask, or initialize it as a matrix of ones if not provided
+        if feature_to_concept_mask is None:
+            self.feature_to_concept_mask = torch.ones(self.input_size, self.num_classes, requires_grad=False)
+        else:
+            assert feature_to_concept_mask.shape == (self.input_size, self.num_classes), \
+                "feature_to_concept_mask should have the shape (num_features, num_concepts)"
+            self.feature_to_concept_mask = feature_to_concept_mask.detach().clone().requires_grad_(False)
     
         self.feature_nns = torch.nn.ModuleList([
                                     FeatureNN(num_units=self.num_units[i],
@@ -368,12 +377,27 @@ class NeuralAdditiveModel(torch.nn.Module):
         if self.feature_dropout_val > 0.0:
             f_out = self.feature_dropout(f_out)
 
-        outputs = f_out.sum(axis=-1) + self.bias #if I want positive bias: F.relu(self.bias)
+        # -------------------------- Apply feature-to-concept mask --------------------------
+        masked_features = torch.matmul(f_out, self.feature_to_concept_mask.to(x.device))  # Map features to concepts
+        # Extract diagonal elements from each matrix
+        feature_outputs = masked_features.diagonal(dim1=-2, dim2=-1)  # Shape: [batch_size, num_concepts]
+        # -----------------------------------------------------------------------------------
+        outputs = feature_outputs + self.bias
+        #outputs = f_out.sum(axis=-1) + self.bias #if I want positive bias: F.relu(self.bias)
         
         return outputs, f_out
 
     def _feature_nns(self, x):
         return [self.feature_nns[i](x[:, i]) for i in range(self.input_size)]
+    
+    # def _get_feature_concept_relation(self, x, f_out):
+    #     # Repeat the feature_to_concept_mask along the batch dimension
+    #     mask = self.feature_to_concept_mask.T  # Transpose to align features with concepts
+    #     mask = mask.unsqueeze(0).expand(x.size(0), -1, -1)  # Shape: [batch_size, num_concepts, num_features]
+
+    #     # Multiply f_out by the mask to filter contributions
+    #     f_out_masked = f_out * mask  # Shape: [batch_size, num_concepts, num_features]
+    #     return f_out_masked
     
 
 # Hirarchical Neural Additive Model Class
@@ -400,6 +424,7 @@ class HierarchNeuralAdditiveModel(torch.nn.Module):
                  weight_norms_kind_phase1: str = "one-inf", 
                  group_size_phase1: int = 2, 
                  monotonic_constraint_phase1: list = None,
+                 feature_to_concept_mask: torch.Tensor = None, 
                  #phase2 - final outputs:
                  num_units_phase2: int= 64,
                  hidden_units_phase2: list = [64, 32],
@@ -460,6 +485,7 @@ class HierarchNeuralAdditiveModel(torch.nn.Module):
         self.weight_norms_kind_first_layer_phase1 = weight_norms_kind_phase1
         self.activation_function_group_size_phase1 = group_size_phase1
         self.monotonic_constraint_phase1 = monotonic_constraint_phase1
+        self.feature_to_concept_mask = feature_to_concept_mask
 
         self.NAM_features = NeuralAdditiveModel(
                         num_inputs = self.input_size,
@@ -474,7 +500,8 @@ class HierarchNeuralAdditiveModel(torch.nn.Module):
                         architecture_type = self.architecture_type_phase1,
                         weight_norms_kind = self.weight_norms_kind_first_layer_phase1, 
                         group_size = self.activation_function_group_size_phase1, 
-                        monotonic_constraint = self.monotonic_constraint_phase1,          
+                        monotonic_constraint = self.monotonic_constraint_phase1,  
+                        feature_to_concept_mask = self.feature_to_concept_mask,         
                         )
 
         if hierarch_net or not learn_only_concepts:
@@ -504,7 +531,8 @@ class HierarchNeuralAdditiveModel(torch.nn.Module):
                                     architecture_type = self.architecture_type_phase2,
                                     weight_norms_kind = self.weight_norms_kind_first_layer_phase2, 
                                     group_size = self.activation_function_group_size_phase2, 
-                                    monotonic_constraint = self.monotonic_constraint_phase2,   
+                                    monotonic_constraint = self.monotonic_constraint_phase2,
+                                    feature_to_concept_mask = None,   
                                     )
         
         # Define activation based on task type
@@ -521,8 +549,6 @@ class HierarchNeuralAdditiveModel(torch.nn.Module):
 
         if self.learn_only_concepts: # Phase 2 computation using latent features
             outputs, phase2_gams_out = SyntheticDatasetGenerator.get_synthetic_data_phase2(concepts, num_classes=self.num_classes, is_test=False)
-            # outputs = self.phase2(concepts)  
-            # phase2_gams_out = None
             return outputs, concepts, phase1_gams_out, phase2_gams_out
         else:
             if not self.hierarch_net:
@@ -541,38 +567,3 @@ class HierarchNeuralAdditiveModel(torch.nn.Module):
                     outputs = self.final_activation(outputs)
 
                 return outputs, concepts, phase1_gams_out, phase2_gams_out
-        
-    def phase2(self, concepts):
-        outputs = []
-        #math_expressions = []
-
-        for j in range(self.num_classes):
-            output_sum = torch.zeros(concepts.size(0), device=concepts.device)
-
-            class_weights = [0.5 + 0.1 * j, 0.3 + 0.05 * j, 0.2 + 0.02 * j, 0.1 + 0.03 * j]
-            #expression = f"output_{j} = "
-
-            for i in range(concepts.size(1)):
-                if (j + i) % 3 == 0:
-                    output_sum += class_weights[0] * concepts[:, i]  # Linear
-                    #expression += f"{class_weights[0]:.2f} * concept[:, {i}] + "
-                elif (j + i) % 3 == 1:
-                    output_sum += class_weights[1] * torch.exp(0.2 * concepts[:, i])  # Exponential
-                    #expression += f"{class_weights[1]:.2f} * exp(0.2 * concept[:, {i}]) + "
-                elif (j + i) % 3 == 2:
-                    output_sum += class_weights[2] * (concepts[:, i] ** 2)  # Quadratic
-                    #expression += f"{class_weights[2]:.2f} * (concept[:, {i}] ** 2) + "
-                else:
-                    output_sum += class_weights[3] * (concepts[:, i]**3)  # Cubic
-                    #expression += f"{class_weights[3]:.2f} * (concept[:, {i}] ** 3) + "
-            
-            # expression = expression.rstrip(' + ')  # Remove trailing ' + '
-            # math_expressions.append(expression)
-            outputs.append(output_sum.reshape(-1, 1))
-        
-        # # Print the generated math expressions for each output
-        # for exp in math_expressions:
-        #     print(exp)
-
-        y = torch.cat(outputs, dim=1)
-        return y

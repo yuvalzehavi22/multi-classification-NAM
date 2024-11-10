@@ -177,7 +177,6 @@ class Trainer:
                 loss += l2_penalty_phase1
                 #loss += l1_penalty_phase1 + l2_penalty_phase1 + mono_penalty_phase1
 
-
                 params = [param for name, param in self.model.named_parameters() if 'multi_output_layer' in name]
                 if len(params) > 0:
                     l1_penalty_phase1_arch = l1_penalty(params, self.l1_lambda_phase1)

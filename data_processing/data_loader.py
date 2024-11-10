@@ -121,94 +121,6 @@ class SyntheticDatasetGenerator:
     make_loader(X, y, batch_size):
         Creates a DataLoader from given input features and target values.
     """
-
-    @staticmethod
-    def get_synthetic_data_phase1_old(num_exp=10, in_features=10, is_test=False):
-        """
-        Generate synthetic data for Phase 1.
-        
-        Parameters:
-        -----------
-        num_exp : int
-            Number of experiments (samples).
-        
-        in_features : int
-            Number of input features.
-
-        is_test : bool
-            generate data for testing the results
-
-        Returns:
-        --------
-        X : torch.Tensor
-            Generated input features.
-        
-        y : torch.Tensor
-            Generated target values.
-        """
-        # Simulate independent variables, x0,...,xn from a Uniform distribution on [0, 3]
-        if is_test:
-            x_values = torch.linspace(0, 3, num_exp).reshape(-1, 1)  # 100 points between -1 and 1
-            X = x_values.repeat(1, in_features)
-        else:
-            X = Uniform(0, 3).sample((num_exp, in_features))
-        print(X.shape)
-        
-        # Creating a dict to save all the true shape functions 
-        shape_functions = {}
-        out_weights={}
-        for j in range(4):
-            for i in range(in_features):
-                shape_functions[f"f_{j}_{i}"] = torch.zeros(num_exp)
-                out_weights[f"f_{j}_{i}"] = 0
-
-        # creating y_0
-        out_weights['f_0_0'] = 2/3
-        out_weights['f_0_1'] = 1/6
-        out_weights['f_0_2'] = 1/4
-
-        shape_functions['f_0_0'] = out_weights['f_0_0']*X[:, 0]
-        shape_functions['f_0_1'] = out_weights['f_0_1']*(X[:, 1]**3)
-        shape_functions['f_0_2'] = out_weights['f_0_2']*(X[:, 2]**2)
-
-        concept_0 = shape_functions['f_0_0'] + shape_functions['f_0_1'] + shape_functions['f_0_2']
-        concept_0 = concept_0.reshape(-1, 1)
-        
-        # creating y_1
-        out_weights['f_1_7'] = 1/5
-        out_weights['f_1_6'] = 2
-
-        shape_functions['f_1_7'] = out_weights['f_1_7']*torch.exp(X[:, 7].abs())
-        shape_functions['f_1_6'] = out_weights['f_1_6']*(torch.cos(4 * X[:, 6])+1)
-
-        concept_1 = shape_functions['f_1_7'] + shape_functions['f_1_6']
-        concept_1 = concept_1.reshape(-1, 1)
-        
-        # creating y_2
-        out_weights['f_2_5'] = 2/3
-        out_weights['f_2_8'] = 3/2
-
-        shape_functions['f_2_5'] = out_weights['f_2_5']*torch.log(X[:, 5].abs()+1)
-        shape_functions['f_2_8'] = out_weights['f_2_8']*(torch.sin(5 * X[:, 8])+1)
-
-        concept_2 = shape_functions['f_2_5'] + shape_functions['f_2_8']
-        concept_2 = concept_2.reshape(-1, 1)
-        
-        # creating y_3
-        out_weights['f_3_7'] = 1/5
-        out_weights['f_3_2'] = 1/4
-
-        shape_functions['f_3_7'] = out_weights['f_3_7']*torch.exp(X[:, 7].abs())
-        shape_functions['f_3_2'] = out_weights['f_3_2']*(X[:, 2]**2)
-        
-        concept_3 = shape_functions['f_3_7'] + shape_functions['f_3_2']
-        concept_3 = concept_3.reshape(-1, 1)
-        
-        # Stack all y_i to form the final target matrix
-        concepts = torch.cat([concept_0 ,concept_1, concept_2, concept_3], dim=1)
-        print(concepts.shape)
-
-        return X, concepts, shape_functions, out_weights
     
     @staticmethod
     def get_synthetic_data_phase1(num_exp=10, raw_features=10, num_concepts=4, is_test=False, seed=42):
@@ -326,8 +238,8 @@ class SyntheticDatasetGenerator:
             device = concepts.device
 
         if is_test:
-            x_values = torch.linspace(round(float(concepts.min())), round(float(concepts.max())), concepts.size(0)).reshape(-1, 1) 
-            concepts = x_values.repeat(1, concepts.size(1))
+            x_values = torch.linspace(round(float(concepts.min())), round(float(concepts.max())), concepts.size(0), device=device).reshape(-1, 1) 
+            concepts = x_values.repeat(1, concepts.size(1)).to(device)
 
         # Creating a dict to save all the true shape functions 
         shape_functions = {}
@@ -359,7 +271,7 @@ class SyntheticDatasetGenerator:
                 else:
                     shape_functions[key] = class_weights[3] * (concepts[:, i]**3) #torch.sin(0.5 * concepts[:, i])  # Sinusoidal
                     #expression += f"{class_weights[3]:.2f} * (concept[:, {i}] ** 3) + "
-
+                
                 output_sum += shape_functions[key]  # Add the function to the current output sum
 
             # expression = expression.rstrip(' + ')  # Remove trailing ' + '

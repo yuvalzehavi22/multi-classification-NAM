@@ -15,6 +15,7 @@ def parse_args():
             task_type="regression",
             hierarch_net=True,
             learn_only_concepts = False,
+            use_feature_concept_mask = False,
             GAM_block_layers_type_phase1="ReLU",
             GAM_block_layers_type_phase2="ReLU",
             featureNN_arch_phase1="multi_output",
@@ -109,6 +110,13 @@ def parse_args():
             choices=[0, 1],  # Only allow 0 or 1 as valid input
             default=0,       # Default value: 0 for False 
             help="Learn only concepts (the shape functions for phase2 are geven) - 0 for False, 1 for True"
+        )
+        parser.add_argument(
+            '--use_feature_concept_mask', 
+            type=int,
+            choices=[0, 1],  # Only allow 0 or 1 as valid input
+            default=0,       # Default value: 0 for False 
+            help=" Using a binary matrix that defines for each feature which concepts it contributes to (0 for False, 1 for True)"
         )
 
         parser.add_argument(

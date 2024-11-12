@@ -162,28 +162,30 @@ class Trainer:
                 self.optimizer.zero_grad()
 
                 # Forward pass
-                if self.model.hierarch_net or self.model.learn_only_concepts:
-                    logits, latent_features, phase1_gams_out, phase2_gams_out = self.model(X)
-                else:
-                    logits, phase1_gams_out = self.model(X)
-                    latent_features, phase2_gams_out = None, None
+                logits, latent_features, phase1_gams_out, phase2_gams_out = self.model(X)
+                # if self.model.hierarch_net or self.model.learn_only_feature_to_concept:
+                #     logits, latent_features, phase1_gams_out, phase2_gams_out = self.model(X)
+                # else:
+                #     logits, phase1_gams_out = self.model(X)
+                #     latent_features, phase2_gams_out = None, None
                 
                 # Calculate loss
                 loss = self.criterion(logits.view(-1), y.view(-1))
 
                 # Add L1, L2 regularization and Monotonicity Penalty for phase 1
-                #l1_penalty_phase1 = l1_penalty(phase1_gams_out, self.l1_lambda_phase1)
-                l2_penalty_phase1 = l2_penalty(phase1_gams_out, self.l2_lambda_phase1)
-                loss += l2_penalty_phase1
-                #loss += l1_penalty_phase1 + l2_penalty_phase1 + mono_penalty_phase1
+                if not self.model.learn_only_concept_to_target:
+                    #l1_penalty_phase1 = l1_penalty(phase1_gams_out, self.l1_lambda_phase1)
+                    l2_penalty_phase1 = l2_penalty(phase1_gams_out, self.l2_lambda_phase1)
+                    loss += l2_penalty_phase1
+                    #loss += l1_penalty_phase1 + l2_penalty_phase1 + mono_penalty_phase1
 
-                params = [param for name, param in self.model.named_parameters() if 'multi_output_layer' in name]
-                if len(params) > 0:
-                    l1_penalty_phase1_arch = l1_penalty(params, self.l1_lambda_phase1)
-                    loss += l1_penalty_phase1_arch
+                    params = [param for name, param in self.model.named_parameters() if 'multi_output_layer' in name]
+                    if len(params) > 0:
+                        l1_penalty_phase1_arch = l1_penalty(params, self.l1_lambda_phase1)
+                        loss += l1_penalty_phase1_arch
 
                 # Add L1, L2 regularization and Monotonicity Penalty for phase 2 if applicable
-                if self.model.hierarch_net and not self.model.learn_only_concepts:
+                if self.model.hierarch_net and not self.model.learn_only_feature_to_concept:
                     l1_penalty_phase2 = l1_penalty(phase2_gams_out, self.l1_lambda_phase2)
                     l2_penalty_phase2 = l2_penalty(phase2_gams_out, self.l2_lambda_phase2)
                     mono_penalty_phase2 = monotonic_penalty(latent_features, logits, self.monotonicity_lambda_phase2)

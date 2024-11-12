@@ -123,7 +123,7 @@ class SyntheticDatasetGenerator:
     """
     
     @staticmethod
-    def get_synthetic_data_phase1(num_exp=10, raw_features=10, num_concepts=4, is_test=False, seed=42):
+    def get_synthetic_data_phase1(num_exp=10, raw_features=10, num_concepts=4, is_test=False, seed=0, X_val=None):
         # Set a seed for reproducibility
         torch.manual_seed(seed)
 
@@ -131,6 +131,8 @@ class SyntheticDatasetGenerator:
         if is_test:
             x_values = torch.linspace(0, 3, num_exp).reshape(-1, 1)
             X = x_values.repeat(1, raw_features)
+        elif X_val is not None: # only for learn_only_concept_to_target param - I already created X
+            X = X_val
         else:
             X = Uniform(0, 3).sample((num_exp, raw_features))
 

@@ -170,9 +170,7 @@ class FeatureNN(torch.nn.Module):
                  dropout: float = .5,
                  shallow: bool = True,
                  first_layer: str = 'ReLU',
-                 hidden_layer: str = 'ReLU',
-                #  first_layer: ActivationLayer = ExULayer,
-                #  hidden_layer: ActivationLayer = ReLULayer,          
+                 hidden_layer: str = 'ReLU',         
                  num_classes: int = 1,
                  architecture_type: str = 'multi_output',  # options: 'single_to_multi_output', 'parallel_single_output', 'multi_output', 'monotonic_hidden_layer'
 
@@ -342,7 +340,8 @@ class NeuralAdditiveModel(torch.nn.Module):
         
         # Validate the feature-to-concept mask, or initialize it as a matrix of ones if not provided
         if feature_to_concept_mask is None:
-            self.feature_to_concept_mask = torch.ones(self.input_size, self.num_classes, requires_grad=False)
+            #self.feature_to_concept_mask = torch.ones(self.input_size, self.num_classes, requires_grad=False)
+            self.feature_to_concept_mask = None
         else:
             assert feature_to_concept_mask.shape == (self.input_size, self.num_classes), \
                 "feature_to_concept_mask should have the shape (num_features, num_concepts)"
@@ -378,26 +377,19 @@ class NeuralAdditiveModel(torch.nn.Module):
             f_out = self.feature_dropout(f_out)
 
         # -------------------------- Apply feature-to-concept mask --------------------------
-        masked_features = torch.matmul(f_out, self.feature_to_concept_mask.to(x.device))  # Map features to concepts
-        # Extract diagonal elements from each matrix
-        feature_outputs = masked_features.diagonal(dim1=-2, dim2=-1)  # Shape: [batch_size, num_concepts]
+        if self.feature_to_concept_mask is not None:
+            masked_features = torch.matmul(f_out, self.feature_to_concept_mask.to(x.device))  # Map features to concepts
+            feature_outputs = masked_features.diagonal(dim1=-2, dim2=-1) # Extract diagonal: [batch_size, num_concepts]
+        else:
+            # If no mask is provided, directly sum over the feature dimension
+            feature_outputs = f_out.sum(axis=-1)  # Shape: [batch_size, num_concepts]
         # -----------------------------------------------------------------------------------
-        outputs = feature_outputs + self.bias
-        #outputs = f_out.sum(axis=-1) + self.bias #if I want positive bias: F.relu(self.bias)
+        outputs = feature_outputs + self.bias #if I want positive bias: F.relu(self.bias)
         
         return outputs, f_out
 
     def _feature_nns(self, x):
         return [self.feature_nns[i](x[:, i]) for i in range(self.input_size)]
-    
-    # def _get_feature_concept_relation(self, x, f_out):
-    #     # Repeat the feature_to_concept_mask along the batch dimension
-    #     mask = self.feature_to_concept_mask.T  # Transpose to align features with concepts
-    #     mask = mask.unsqueeze(0).expand(x.size(0), -1, -1)  # Shape: [batch_size, num_concepts, num_features]
-
-    #     # Multiply f_out by the mask to filter contributions
-    #     f_out_masked = f_out * mask  # Shape: [batch_size, num_concepts, num_features]
-    #     return f_out_masked
     
 
 # Hirarchical Neural Additive Model Class
@@ -409,8 +401,8 @@ class HierarchNeuralAdditiveModel(torch.nn.Module):
                  num_inputs: int,
                  task_type: str = 'regression',
                  hierarch_net: bool = True,
-                 learn_only_concepts: bool = False,
-
+                 learn_only_feature_to_concept: bool = False,
+                 learn_only_concept_to_target: bool = False, 
                  #phase1 - latent_features:
                  num_units_phase1: int= 64,
                  hidden_units_phase1: list = [64, 32],
@@ -471,40 +463,42 @@ class HierarchNeuralAdditiveModel(torch.nn.Module):
         
         self.task_type = task_type
         self.hierarch_net = hierarch_net
-        self.learn_only_concepts = learn_only_concepts
+        self.learn_only_feature_to_concept = learn_only_feature_to_concept
+        self.learn_only_concept_to_target = learn_only_concept_to_target
 
-        # phase1 hyperparameters - concepts:
-        self.num_units_phase1 = num_units_phase1
-        self.hidden_units_phase1 = hidden_units_phase1
-        self.hidden_dropout_phase1 = hidden_dropout_phase1
-        self.feature_dropout_phase1 = feature_dropout_phase1
-        self.shallow_phase1 = shallow_phase1
-        self.activation_first_layer_phase1 = first_layer_phase1
-        self.activation_hidden_layer_phase1 = hidden_layer_phase1
-        self.architecture_type_phase1 = featureNN_architecture_phase1
-        self.weight_norms_kind_first_layer_phase1 = weight_norms_kind_phase1
-        self.activation_function_group_size_phase1 = group_size_phase1
-        self.monotonic_constraint_phase1 = monotonic_constraint_phase1
-        self.feature_to_concept_mask = feature_to_concept_mask
+        if not learn_only_concept_to_target:
+            # phase1 hyperparameters - concepts:
+            self.num_units_phase1 = num_units_phase1
+            self.hidden_units_phase1 = hidden_units_phase1
+            self.hidden_dropout_phase1 = hidden_dropout_phase1
+            self.feature_dropout_phase1 = feature_dropout_phase1
+            self.shallow_phase1 = shallow_phase1
+            self.activation_first_layer_phase1 = first_layer_phase1
+            self.activation_hidden_layer_phase1 = hidden_layer_phase1
+            self.architecture_type_phase1 = featureNN_architecture_phase1
+            self.weight_norms_kind_first_layer_phase1 = weight_norms_kind_phase1
+            self.activation_function_group_size_phase1 = group_size_phase1
+            self.monotonic_constraint_phase1 = monotonic_constraint_phase1
+            self.feature_to_concept_mask = feature_to_concept_mask
 
-        self.NAM_features = NeuralAdditiveModel(
-                        num_inputs = self.input_size,
-                        num_units = self.num_units_phase1,
-                        hidden_units = self.hidden_units_phase1,
-                        hidden_dropout = self.hidden_dropout_phase1,
-                        feature_dropout = self.feature_dropout_phase1,
-                        shallow = self.shallow_phase1,
-                        first_layer = self.activation_first_layer_phase1,
-                        hidden_layer = self.activation_hidden_layer_phase1,
-                        num_classes = self.latent_var_dim,
-                        architecture_type = self.architecture_type_phase1,
-                        weight_norms_kind = self.weight_norms_kind_first_layer_phase1, 
-                        group_size = self.activation_function_group_size_phase1, 
-                        monotonic_constraint = self.monotonic_constraint_phase1,  
-                        feature_to_concept_mask = self.feature_to_concept_mask,         
-                        )
+            self.NAM_features = NeuralAdditiveModel(
+                            num_inputs = self.input_size,
+                            num_units = self.num_units_phase1,
+                            hidden_units = self.hidden_units_phase1,
+                            hidden_dropout = self.hidden_dropout_phase1,
+                            feature_dropout = self.feature_dropout_phase1,
+                            shallow = self.shallow_phase1,
+                            first_layer = self.activation_first_layer_phase1,
+                            hidden_layer = self.activation_hidden_layer_phase1,
+                            num_classes = self.latent_var_dim,
+                            architecture_type = self.architecture_type_phase1,
+                            weight_norms_kind = self.weight_norms_kind_first_layer_phase1, 
+                            group_size = self.activation_function_group_size_phase1, 
+                            monotonic_constraint = self.monotonic_constraint_phase1,  
+                            feature_to_concept_mask = self.feature_to_concept_mask,         
+                            )
 
-        if hierarch_net or not learn_only_concepts:
+        if hierarch_net or not learn_only_feature_to_concept:
             # phase2 hyperparameters - final outputs:
             self.num_units_phase2 = num_units_phase2
             self.hidden_units_phase2 = hidden_units_phase2
@@ -545,25 +539,47 @@ class HierarchNeuralAdditiveModel(torch.nn.Module):
 
 
     def forward(self, x):
-        concepts, phase1_gams_out = self.NAM_features(x)
-
-        if self.learn_only_concepts: # Phase 2 computation using latent features
-            outputs, phase2_gams_out = SyntheticDatasetGenerator.get_synthetic_data_phase2(concepts, num_classes=self.num_classes, is_test=False)
+        if self.learn_only_concept_to_target:
+            _, concepts, phase1_gams_out, _ = SyntheticDatasetGenerator.get_synthetic_data_phase1(num_exp=x.size(0), raw_features=self.input_size, num_concepts=self.latent_var_dim, is_test=False, seed=0, X_val=x)
+            outputs, phase2_gams_out = self.NAM_output(concepts)
+            # Apply activation based on the task
+            if self.final_activation:
+                outputs = self.final_activation(outputs)
             return outputs, concepts, phase1_gams_out, phase2_gams_out
+        
         else:
-            if not self.hierarch_net:
-                # Apply activation based on the task
-                if self.final_activation:
-                    outputs = self.final_activation(concepts)
-                else:
-                    outputs = concepts
-                    
-                return outputs, phase1_gams_out
-            
-            else:
-                outputs, phase2_gams_out = self.NAM_output(concepts)
-                # Apply activation based on the task
-                if self.final_activation:
-                    outputs = self.final_activation(outputs)
+            concepts, phase1_gams_out = self.NAM_features(x)
 
-                return outputs, concepts, phase1_gams_out, phase2_gams_out
+            if self.learn_only_feature_to_concept: # Phase 2 computation using latent features
+                outputs, phase2_gams_out = SyntheticDatasetGenerator.get_synthetic_data_phase2(concepts, num_classes=self.num_classes, is_test=False)
+            else:          
+                outputs, phase2_gams_out = self.NAM_output(concepts)
+            # Apply activation based on the task
+            if self.final_activation:
+                outputs = self.final_activation(outputs)
+
+            return outputs, concepts, phase1_gams_out, phase2_gams_out
+        
+    # def forward(self, x):
+        # concepts, phase1_gams_out = self.NAM_features(x)
+
+        # if self.learn_only_concepts: # Phase 2 computation using latent features
+        #     outputs, phase2_gams_out = SyntheticDatasetGenerator.get_synthetic_data_phase2(concepts, num_classes=self.num_classes, is_test=False)
+        #     return outputs, concepts, phase1_gams_out, phase2_gams_out
+        # else:
+        #     if not self.hierarch_net:
+        #         # Apply activation based on the task
+        #         if self.final_activation:
+        #             outputs = self.final_activation(concepts)
+        #         else:
+        #             outputs = concepts
+                    
+        #         return outputs, phase1_gams_out
+            
+        #     else:
+        #         outputs, phase2_gams_out = self.NAM_output(concepts)
+        #         # Apply activation based on the task
+        #         if self.final_activation:
+        #             outputs = self.final_activation(outputs)
+
+        #         return outputs, concepts, phase1_gams_out, phase2_gams_out

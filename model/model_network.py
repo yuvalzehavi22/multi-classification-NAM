@@ -140,9 +140,9 @@ class FeatureNN_Base(torch.nn.Module):
                                                              group_size=min(self.activation_function_group_size, self.num_classes),
                                                              monotonic_constraint=self.monotonic_constraint)
         else:
-            self.output_layer = torch.nn.Linear(in_units, self.num_classes, bias=True)
+            self.output_layer = torch.nn.Linear(in_units, self.num_classes, bias=False)
             torch.nn.init.xavier_uniform_(self.output_layer.weight)
-            torch.nn.init.constant_(self.output_layer.bias, 0.01)#torch.nn.init.zeros_(self.output_layer.bias)
+            #torch.nn.init.constant_(self.output_layer.bias, 0.01)#torch.nn.init.zeros_(self.output_layer.bias)
 
 
     def forward(self, x):

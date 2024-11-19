@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import wandb
 
@@ -105,6 +106,8 @@ def get_shape_functions_synthetic_data(model, args, num_test_exp=1000, only_phas
     if not only_phase2:
         x_pred = None
         plot_shape_functions(X=x_values_phase1, shape_functions=shape_functions_phase1, phase_gams_out=phase1_gams_out, x_pred=x_pred, num_features=args.in_features, num_outputs=args.latent_dim, vis_lat_features=True)
+        plot_final_concepts(latent_features, num_concepts=latent_features.size(1), title='Pred Concepts')
+        plot_final_concepts(y_phase1, num_concepts=y_phase1.size(1),title='True Concepts')
     if args.hierarch_net or only_phase2:
         plot_shape_functions(X=x_values_phase2, shape_functions=shape_functions_phase2, phase_gams_out=phase2_gams_out, x_pred=latent_features, num_features=args.latent_dim, num_outputs=args.output_dim, vis_lat_features=False)
     return
@@ -195,6 +198,39 @@ def plot_shape_functions(X, shape_functions, phase_gams_out, x_pred=None, num_fe
     # Log the plot to W&B
     if wandb.run is not None:
         wandb.log({fig_name: wandb.Image(f"{fig_name}.png")})
+    else:
+        plt.show()
+        
+    plt.close()
+
+    return
+
+
+def plot_final_concepts(outputs, num_concepts, title):
+    """
+    Plot the shapes of the final concepts.
+    
+    Parameters:
+    - outputs (torch.Tensor): The final concept outputs, shape [batch_size, num_concepts].
+    - num_concepts (int): The number of concepts.
+    """
+    outputs = outputs.detach().cpu().numpy()
+    batch_indices = np.arange(outputs.shape[0])
+    
+    plt.figure(figsize=(15, 5))
+    for concept_idx in range(num_concepts):
+        plt.plot(batch_indices, outputs[:, concept_idx], label=f"{title} {concept_idx + 1}")
+    
+    plt.title(f"Final {title}")
+    plt.xlabel("Example Index")
+    plt.ylabel(f"{title} Value")
+    plt.legend()
+    # Save the figure as a variable
+    fig = plt.gcf()
+
+    # Check if W&B is initialized
+    if wandb.run is not None:
+        wandb.log({title: wandb.Image(fig)})
     else:
         plt.show()
         

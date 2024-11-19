@@ -189,7 +189,7 @@ def main():
     
     # Visualization of the shape functions created in the two phases
     if SyntheticDataset:
-        get_shape_functions_synthetic_data(hirarch_nam, args, num_test_exp=10000)
+        get_shape_functions_synthetic_data(hirarch_nam, args, num_test_exp=1000)
     else: 
         get_shape_functions(hirarch_nam, args)
 

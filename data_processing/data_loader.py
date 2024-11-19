@@ -268,7 +268,7 @@ class SyntheticDatasetGenerator:
                     shape_functions[key] = class_weights[1] * torch.exp(0.2 * concepts[:, i])  # Exponential
                     #expression += f"{class_weights[1]:.2f} * exp(0.2 * concept[:, {i}]) + "
                 elif (j + i) % 3 == 2:
-                    shape_functions[key] = class_weights[2] * (concepts[:, i] ** 2)  # Quadratic
+                    shape_functions[key] = class_weights[2] * torch.sign(concepts[:, i])*(concepts[:, i] ** 2)  # Quadratic
                     #expression += f"{class_weights[2]:.2f} * (concept[:, {i}] ** 2) + "
                 else:
                     shape_functions[key] = class_weights[3] * (concepts[:, i]**3) #torch.sin(0.5 * concepts[:, i])  # Sinusoidal

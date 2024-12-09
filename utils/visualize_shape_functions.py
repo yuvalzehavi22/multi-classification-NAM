@@ -171,11 +171,13 @@ def plot_shape_functions(X, shape_functions, phase_gams_out, x_pred=None, num_fe
 
             # Plot the learned shape function for the current feature and output
             if x_pred is not None:
-                ax.scatter(x_pred[:, feature_idx], learned_shape_func, color='blue', alpha=0.6, label="Learned")
+                ax.scatter(x_pred[:, feature_idx], learned_shape_func, s=5, color='blue', alpha=0.6, label="Learned")
             else:
-                ax.plot(X[:, feature_idx], learned_shape_func, color='blue', alpha=0.6, label="Learned")
+                ax.scatter(X[:, feature_idx], learned_shape_func, s=5, color='blue', alpha=0.6, label="Learned")
+                #ax.plot(X[:, feature_idx], learned_shape_func, color='blue', alpha=0.6, label="Learned")
 
             # Plot the true shape function
+            ax.scatter(X[:, feature_idx], true_shape_func, s=5, color='red', alpha=0.6, label="True")
             ax.plot(X[:, feature_idx], true_shape_func, color='red', linestyle='--', label="True")
 
             # Set consistent y-limits across all subplots

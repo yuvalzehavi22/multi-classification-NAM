@@ -16,6 +16,10 @@ utils/__pycache__/visualize_shape_functions.cpython-38.pyc
 
 # Ignore ipynb checkpoints
 .ipynb_checkpoints
+hirarchial_nam.ipynb
+multi_class_nam.ipynb
+explore_phase2.ipynb
+explore_data.ipynb
 
 # Ignore W&B
 artifacts
@@ -34,3 +38,8 @@ Shape functions for phase1.png
 Shape functions for phase2.png
 
 val_loss.json
+
+model/mononet.py
+expirement.py
+data_processing/plots/
+training/plots/

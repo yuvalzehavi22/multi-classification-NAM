@@ -89,6 +89,7 @@ def main():
     #target_fig.show()
 
     print("Training Hierarchical NAM...")
+
     print(f"Phase1 architecture: [{args.first_activate_layer_phase1}: {args.first_hidden_dim_phase1}, {args.hidden_activate_layer_phase1}: {args.hidden_dim_phase1}]")
     if args.hierarch_net:
         print(f"Phase2 architecture: [{args.first_activate_layer_phase2}: {args.first_hidden_dim_phase2}, {args.hidden_activate_layer_phase2}: {args.hidden_dim_phase2}]")
@@ -97,7 +98,8 @@ def main():
     hirarch_nam = HierarchNeuralAdditiveModel(num_inputs=args.in_features,
                                         task_type= args.task_type,
                                         hierarch_net= args.hierarch_net,
-                                        learn_only_concepts = args.learn_only_concepts,
+                                        learn_only_feature_to_concept = args.learn_only_feature_to_concept,
+                                        learn_only_concept_to_target = args.learn_only_concept_to_target,
                                         #phase1 - latent_features:
                                         num_units_phase1= args.first_hidden_dim_phase1,
                                         hidden_units_phase1 = args.hidden_dim_phase1,
@@ -187,7 +189,7 @@ def main():
     
     # Visualization of the shape functions created in the two phases
     if SyntheticDataset:
-        get_shape_functions_synthetic_data(hirarch_nam, args, num_test_exp=10000)
+        get_shape_functions_synthetic_data(hirarch_nam, args, num_test_exp=1000)
     else: 
         get_shape_functions(hirarch_nam, args)
 
@@ -195,7 +197,7 @@ def main():
     plot_pred_data_histograms(hirarch_nam, args.hierarch_net, X)
 
     # Log the concepts weights to W&B
-    if args.featureNN_arch_phase1 == 'single_to_multi_output':
+    if args.featureNN_arch_phase1 == 'single_to_multi_output' and not args.learn_only_concept_to_target:
         plot_concepts_weights(out_weights, hirarch_nam, model_predict = True)
     
     
@@ -209,4 +211,4 @@ if __name__ == "__main__":
 #python run_model.py --seed 42 --eval_every 50 --featureNN_arch_phase1 'single_to_multi_output' --featureNN_arch_phase2 'parallel_single_output' --learning_rate 0.0001 --epochs 1000 --l1_lambda_phase1 1e-8 --l1_lambda_phase2 1e-7 --monotonicity_lambda 1e-6
 #python run_model.py --seed 42 --eval_every 50 --featureNN_arch_phase1 'single_to_multi_output' --featureNN_arch_phase2 'parallel_single_output' --learning_rate 0.0005 --epochs 1000 --l1_lambda_phase1 1e-8 --l1_lambda_phase2 1e-7 --monotonicity_lambda 1e-6 --first_hidden_dim_phase2 64 --hidden_dim_phase2 64 32 --first_activate_layer_phase2 "ReLU" --hidden_activate_layer_phase2 "ReLU"
 #python run_model.py --seed 42 --eval_every 50 --learning_rate 0.001 --epochs 1000 --hierarch_net 0 --featureNN_arch_phase1 'single_to_multi_output' --batch_size 32 --lr_scheduler 'StepLR' --l2_lambda_phase1 1e-6
-#python run_model.py --WB_project_name "Hirarchial_GAMs-synt_data" --num_exp 10 --epochs 2 --lr_scheduler 'CosineAnnealingLR' --learning_rate 0.0005 --in_features 5 --latent_dim 3 --output_dim 4 --learn_only_concepts 0 --use_feature_concept_mask 1
+#python run_model.py --WB_project_name "Hirarchial_GAMs-synt_data" --num_exp 1000 --epochs 100 --lr_scheduler 'CosineAnnealingLR' --learning_rate 0.0005 --in_features 5 --latent_dim 3 --output_dim 4 --learn_only_feature_to_concept 0 --use_feature_concept_mask 0 --learn_only_concept_to_target 1

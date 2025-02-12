@@ -17,9 +17,10 @@ import wandb
 import plotly.graph_objects as go
 
 #from utils import define_device
-from training.trainer_utils import l1_penalty, l2_penalty, monotonic_penalty
-from utils.utils import define_device, plot_data_histograms
+from training.trainer_utils import l1_penalty, l2_penalty, monotonic_penalty, plot_data_histograms_during_training, plot_shape_functions_during_training
+from utils.utils import define_device, plot_data_histograms, plot_pred_data_histograms
 from utils.model_parser import *
+from utils.visualize_shape_functions import get_shape_functions_synthetic_data, plot_shape_functions
 
 
 class Trainer:
@@ -162,28 +163,25 @@ class Trainer:
                 self.optimizer.zero_grad()
 
                 # Forward pass
-                if self.model.hierarch_net or self.model.learn_only_concepts:
-                    logits, latent_features, phase1_gams_out, phase2_gams_out = self.model(X)
-                else:
-                    logits, phase1_gams_out = self.model(X)
-                    latent_features, phase2_gams_out = None, None
+                logits, latent_features, phase1_gams_out, phase2_gams_out = self.model(X)
                 
                 # Calculate loss
                 loss = self.criterion(logits.view(-1), y.view(-1))
 
                 # Add L1, L2 regularization and Monotonicity Penalty for phase 1
-                #l1_penalty_phase1 = l1_penalty(phase1_gams_out, self.l1_lambda_phase1)
-                l2_penalty_phase1 = l2_penalty(phase1_gams_out, self.l2_lambda_phase1)
-                loss += l2_penalty_phase1
-                #loss += l1_penalty_phase1 + l2_penalty_phase1 + mono_penalty_phase1
+                if not self.model.learn_only_concept_to_target:
+                    #l1_penalty_phase1 = l1_penalty(phase1_gams_out, self.l1_lambda_phase1)
+                    l2_penalty_phase1 = l2_penalty(phase1_gams_out, self.l2_lambda_phase1)
+                    loss += l2_penalty_phase1
+                    #loss += l1_penalty_phase1 + l2_penalty_phase1 + mono_penalty_phase1
 
-                params = [param for name, param in self.model.named_parameters() if 'multi_output_layer' in name]
-                if len(params) > 0:
-                    l1_penalty_phase1_arch = l1_penalty(params, self.l1_lambda_phase1)
-                    loss += l1_penalty_phase1_arch
+                    params = [param for name, param in self.model.named_parameters() if 'multi_output_layer' in name]
+                    if len(params) > 0:
+                        l1_penalty_phase1_arch = l1_penalty(params, self.l1_lambda_phase1)
+                        loss += l1_penalty_phase1_arch
 
                 # Add L1, L2 regularization and Monotonicity Penalty for phase 2 if applicable
-                if self.model.hierarch_net and not self.model.learn_only_concepts:
+                if self.model.hierarch_net and not self.model.learn_only_feature_to_concept:
                     l1_penalty_phase2 = l1_penalty(phase2_gams_out, self.l1_lambda_phase2)
                     l2_penalty_phase2 = l2_penalty(phase2_gams_out, self.l2_lambda_phase2)
                     mono_penalty_phase2 = monotonic_penalty(latent_features, logits, self.monotonicity_lambda_phase2)
@@ -265,6 +263,27 @@ class Trainer:
 
                 if epoch % self.eval_every == 0:
                     print(f"Epoch {epoch} | Train Loss: {train_loss:.5f} | Train MAE: {train_mae:.5f} | Train RMSE: {train_rmse:.5f}")
+
+                    all_inputs = self.get_all_inputs(loader)  # Gather all inputs
+                    self.model.eval()  # Set model to evaluation mode
+                    with torch.no_grad():  # Disable gradient computation
+                        logits, latent_features, gams_out_phase1, gams_out_phase2 = self.model(all_inputs)
+                    
+                    plot_shape_functions_during_training(all_inputs, gams_out_phase1, epoch, num_features=all_inputs.size(1), num_outputs=latent_features.size(1), vis_lat_features=True)
+                    plot_shape_functions_during_training(latent_features, gams_out_phase2, epoch, num_features=latent_features.size(1), num_outputs=logits.size(1), vis_lat_features=False)
+
+                    # Log the predicted output distribution to W&B
+                    _ =plot_data_histograms_during_training(values=latent_features, values_name='Concept', epoch=epoch, nbins=80, save_path="data_processing/plots/")
+                    _ =plot_data_histograms_during_training(values=logits, values_name='Target', epoch=epoch, nbins=100, save_path="data_processing/plots/")
+
+        # Save each file of the shape functions created during different training phases to W&B
+        image_files = glob.glob("training/plots/*.png")
+        for image_file in image_files:
+            wandb.save(image_file)
+        
+        image_files = glob.glob("data_processing/plots/*.png")
+        for image_file in image_files:
+            wandb.save(image_file)
 
         if val_loader is None:
             self.save_model("best_model.pt")        
@@ -430,22 +449,15 @@ class Trainer:
         self.model.load_state_dict(torch.load(path))
         self.model.to(self.device)
         print(f"Model loaded from {path}")
+    
 
-    def plot_pred_data_histograms(self, loader):
-        """
-        Plots histograms of the predicted output.
-        using the "plot_data_histograms" function in the "utils/utils.py" file
-        """
-        self.model.eval()
-        with torch.no_grad():
-            for X, _ in loader:
-                X = X.to(self.device)
-                if self.model.hierarch_net:
-                    logits, latent_features, _, _ = self.model(X)
-                    _ = plot_data_histograms(values=latent_features, values_name='Concept',nbins=80, model_predict=True, save_path="data_processing/plots/")
-                    _ = plot_data_histograms(values=logits, values_name='Target',nbins=100, model_predict=True, save_path="data_processing/plots/")
-                else:
-                    logits, _ = self.model(X)
-                    _ = plot_data_histograms(values=logits, values_name='Concept',nbins=80, model_predict=True, save_path="data_processing/plots/")
+    def get_all_inputs(self, loader):
+        all_inputs = []
 
+        for X, _ in loader:  # No need to load `y` if we're only using inputs
+            X = X.to(self.device)
+            all_inputs.append(X)
 
+        # Concatenate all inputs into a single tensor
+        all_inputs = torch.cat(all_inputs)
+        return all_inputs

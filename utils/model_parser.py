@@ -14,7 +14,8 @@ def parse_args():
             val_split=0.2,
             task_type="regression",
             hierarch_net=True,
-            learn_only_concepts = False,
+            learn_only_feature_to_concept = False,
+            learn_only_concept_to_target = False,
             use_feature_concept_mask = False,
             GAM_block_layers_type_phase1="ReLU",
             GAM_block_layers_type_phase2="ReLU",
@@ -105,11 +106,18 @@ def parse_args():
             help="Use hierarchical net (adding phase2) - 0 for False, 1 for True"
         )
         parser.add_argument(
-            '--learn_only_concepts', 
+            '--learn_only_feature_to_concept', 
             type=int,
             choices=[0, 1],  # Only allow 0 or 1 as valid input
             default=0,       # Default value: 0 for False 
             help="Learn only concepts (the shape functions for phase2 are geven) - 0 for False, 1 for True"
+        )
+        parser.add_argument(
+            '--learn_only_concept_to_target', 
+            type=int,
+            choices=[0, 1],  # Only allow 0 or 1 as valid input
+            default=0,       # Default value: 0 for False 
+            help="Learn only concept_to_target phase (the shape functions for phase1 are geven) - 0 for False, 1 for True"
         )
         parser.add_argument(
             '--use_feature_concept_mask', 
@@ -198,7 +206,7 @@ def parse_args():
         parser.add_argument(
             '--hidden_dropout_phase1', 
             type=float, 
-            default=0.2, 
+            default=0.0, 
             help='Coefficient for dropout within each Feature NNs'
         )
         parser.add_argument(
@@ -210,7 +218,7 @@ def parse_args():
         parser.add_argument(
             '--feature_dropout_phase1', 
             type=float, 
-            default=0.3, 
+            default=0.0, #0.3
             help='Coefficient for dropping out entire Feature NNs'
         )
         parser.add_argument(
@@ -240,7 +248,7 @@ def parse_args():
         # ---------------------------------------------------------------------
         # ----------------------- train/eval parameters -----------------------
         # ---------------------------------------------------------------------
-        parser.add_argument('--epochs', type=int, default=1000, help='Number of epochs')
+        parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
         parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
         parser.add_argument('--learning_rate', type=float, default=0.0035, help='Learning rate')
         parser.add_argument('--weight_decay', type=float, default=0.00001, help='Weight decay')

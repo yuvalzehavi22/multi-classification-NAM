@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import wandb
 
@@ -97,48 +98,60 @@ def get_shape_functions_synthetic_data(model, args, num_test_exp=1000, only_phas
 
     logits, latent_features, phase1_gams_out, phase2_gams_out= model(x_values_phase1)
 
-    _, shape_functions_phase2 = SyntheticDatasetGenerator.get_synthetic_data_phase2(y_phase1, num_classes=args.output_dim, is_test=True)
+    _, shape_functions_phase2 = SyntheticDatasetGenerator.get_synthetic_data_phase2(latent_features, num_classes=args.output_dim, is_test=True)
 
     x_values_phase2 = torch.linspace(round(float(latent_features.min())), round(float(latent_features.max())), num_test_exp).reshape(-1, 1).to(device)
     x_values_phase2 = x_values_phase2.repeat(1, latent_features.size(1))
 
     if not only_phase2:
-        plot_shape_functions(phase1_gams_out, x_values_phase1, shape_functions_phase1, num_features=args.in_features, num_outputs=args.latent_dim, vis_lat_features=True)
+        x_pred = None
+        plot_shape_functions(X=x_values_phase1, shape_functions=shape_functions_phase1, phase_gams_out=phase1_gams_out, x_pred=x_pred, num_features=args.in_features, num_outputs=args.latent_dim, vis_lat_features=True)
+        plot_final_concepts(latent_features, num_concepts=latent_features.size(1), title='Pred Concepts')
+        plot_final_concepts(y_phase1, num_concepts=y_phase1.size(1),title='True Concepts')
     if args.hierarch_net or only_phase2:
-        if phase2_gams_out is not None:
-            plot_shape_functions(phase2_gams_out, x_values_phase2, shape_functions_phase2, num_features=args.latent_dim, num_outputs=args.output_dim, vis_lat_features=False)
+        plot_shape_functions(X=x_values_phase2, shape_functions=shape_functions_phase2, phase_gams_out=phase2_gams_out, x_pred=latent_features, num_features=args.latent_dim, num_outputs=args.output_dim, vis_lat_features=False)
     return
 
 
-def plot_shape_functions(phase_gams_out, X, shape_functions, num_features=10, num_outputs=4, vis_lat_features=False):
+def plot_shape_functions(X, shape_functions, phase_gams_out, x_pred=None, num_features=10, num_outputs=4, vis_lat_features=False):
     """
     Plots the learned shape functions for each feature.
-    
+
     Parameters:
-    - phase1_gams_out (torch.Tensor): The shape functions output tensor of shape [samples, outputs, features]
-    - X (torch.Tensor): The input feature values, used for the x-axis
-    - shape_functions (dict): Dictionary containing the true shape functions for each feature-output pair
-    - num_features (int): Number of features
-    - num_outputs (int): Number of outputs per feature (from phase1_gams_out)
+    - X (torch.Tensor): Input feature values, used for the x-axis.
+    - shape_functions (dict): Dictionary of true shape functions for each feature-output pair.
+    - phase_gams_out (torch.Tensor | dict): The learned shape functions.
+    - x_pred (torch.Tensor | None): Predicted feature values for scatter plotting.
+    - num_features (int): Number of features.
+    - num_outputs (int): Number of outputs.
+    - vis_lat_features (bool): Whether to visualize latent features.
     """
     # Ensure `X` is on the CPU and converted to NumPy for plotting
-    X = X.cpu().detach().numpy()
-
-    if type(phase_gams_out) is dict:
-        # Determine global min and max values for consistent y-axis limits across all plots
-        global_min = min(*[min(pred_func) for pred_func in phase_gams_out.values()], *[min(func) for func in shape_functions.values()])
-        global_max = max(*[max(pred_func) for pred_func in phase_gams_out.values()], *[max(func) for func in shape_functions.values()])
-    else:    
-        # Move phase1_gams_out to CPU for visualization
+    X = X.cpu().numpy()
+    if isinstance(phase_gams_out, torch.Tensor):
         phase_gams_out = phase_gams_out.detach().cpu().numpy()
+    if x_pred is not None:
+        x_pred = x_pred.detach().cpu().numpy()
 
-        # Determine global min and max values for consistent y-axis limits across all plots
-        global_min = min(phase_gams_out.min(), *[min(func) for func in shape_functions.values()])
-        global_max = max(phase_gams_out.max(), *[max(func) for func in shape_functions.values()])
+    # Determine global min and max for consistent y-axis limits
+    global_min = float('inf')
+    global_max = float('-inf')
+    
+    for key, func in shape_functions.items():
+        global_min = min(global_min, func.min())
+        global_max = max(global_max, func.max())
+
+    if isinstance(phase_gams_out, dict):
+        for key, func in phase_gams_out.items():
+            global_min = min(global_min, func.detach().cpu().numpy().min())
+            global_max = max(global_max, func.detach().cpu().numpy().max())
+    else:
+        global_min = min(global_min, phase_gams_out.min())
+        global_max = max(global_max, phase_gams_out.max())
 
     # Apply a 10% padding for better visualization
-    y_min = global_min - 0.1 * abs(global_min)
-    y_max = global_max + 0.1 * abs(global_max)
+    y_min = float(global_min - 0.1 * abs(global_min))
+    y_max = float(global_max + 0.1 * abs(global_max))
 
     # Create a figure with a subplot for each feature
     fig, axes = plt.subplots(num_features, num_outputs, figsize=(15, num_features * 3))
@@ -148,28 +161,33 @@ def plot_shape_functions(phase_gams_out, X, shape_functions, num_features=10, nu
             # Select the subplot for this feature and output
             ax = axes[feature_idx, output_idx] if num_features > 1 else axes[output_idx]
 
-            # Get the learned shape function values for this feature and output
-            if type(phase_gams_out) is dict:
+            # Retrieve learned and true shape functions
+            if isinstance(phase_gams_out, dict):
                 learned_shape_func = phase_gams_out[f'f_{output_idx}_{feature_idx}'].detach().cpu().numpy()
             else:
                 learned_shape_func = phase_gams_out[:, output_idx, feature_idx]
 
-            # Retrieve the true shape function for the current feature-output pair
-            true_shape_func = shape_functions[f'f_{output_idx}_{feature_idx}']
+            true_shape_func = shape_functions.get(f'f_{output_idx}_{feature_idx}', None).detach().cpu().numpy()
 
             # Plot the learned shape function for the current feature and output
-            ax.plot(X[:, feature_idx], learned_shape_func, color='blue', alpha=0.6)
+            if x_pred is not None:
+                ax.scatter(x_pred[:, feature_idx], learned_shape_func, s=5, color='blue', alpha=0.6, label="Learned")
+            else:
+                ax.scatter(X[:, feature_idx], learned_shape_func, s=5, color='blue', alpha=0.6, label="Learned")
+                #ax.plot(X[:, feature_idx], learned_shape_func, color='blue', alpha=0.6, label="Learned")
 
             # Plot the true shape function
-            ax.plot(X[:, feature_idx], true_shape_func, color='red', linestyle='--')
+            ax.scatter(X[:, feature_idx], true_shape_func, s=5, color='red', alpha=0.6, label="True")
+            ax.plot(X[:, feature_idx], true_shape_func, color='red', linestyle='--', label="True")
 
             # Set consistent y-limits across all subplots
             ax.set_ylim([y_min, y_max])
 
             # Set a title and labels
-            ax.set_title(f'Shape Function for Feature {feature_idx + 1} to Output {output_idx + 1}')
+            ax.set_title(f'Feature {feature_idx} to Output {output_idx}')
             ax.set_xlabel("Input Values")
             ax.set_ylabel("Shape Function Output")
+            ax.legend()
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 
@@ -182,6 +200,39 @@ def plot_shape_functions(phase_gams_out, X, shape_functions, num_features=10, nu
     # Log the plot to W&B
     if wandb.run is not None:
         wandb.log({fig_name: wandb.Image(f"{fig_name}.png")})
+    else:
+        plt.show()
+        
+    plt.close()
+
+    return
+
+
+def plot_final_concepts(outputs, num_concepts, title):
+    """
+    Plot the shapes of the final concepts.
+    
+    Parameters:
+    - outputs (torch.Tensor): The final concept outputs, shape [batch_size, num_concepts].
+    - num_concepts (int): The number of concepts.
+    """
+    outputs = outputs.detach().cpu().numpy()
+    batch_indices = np.arange(outputs.shape[0])
+    
+    plt.figure(figsize=(15, 5))
+    for concept_idx in range(num_concepts):
+        plt.plot(batch_indices, outputs[:, concept_idx], label=f"{title} {concept_idx + 1}")
+    
+    plt.title(f"Final {title}")
+    plt.xlabel("Example Index")
+    plt.ylabel(f"{title} Value")
+    plt.legend()
+    # Save the figure as a variable
+    fig = plt.gcf()
+
+    # Check if W&B is initialized
+    if wandb.run is not None:
+        wandb.log({title: wandb.Image(fig)})
     else:
         plt.show()
         

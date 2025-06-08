@@ -20,6 +20,7 @@ hirarchial_nam.ipynb
 multi_class_nam.ipynb
 explore_phase2.ipynb
 explore_data.ipynb
+explore_monotonic.ipynb
 
 # Ignore W&B
 artifacts
@@ -39,8 +40,9 @@ Shape functions for phase2.png
 
 val_loss.json
 
-model/mononet.py
 expirement.py
 data_processing/plots/
 training/plots/
 nam_original
+model/simplified_model_network.py
+model/model_net_LipschitzMonotonic.py

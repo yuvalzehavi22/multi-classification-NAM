@@ -37,7 +37,7 @@ def main():
     
     # Set device and seed
     device = define_device("auto")
-    print(device)
+    print(f"Using device: {device}")
     seed_everything(args.seed)
 
     # DATA PROCESSING: Generate synthetic data for Phase 1 and Phase 2
@@ -110,9 +110,6 @@ def main():
                                         hidden_layer_phase1= args.hidden_activate_layer_phase1,         
                                         latent_var_dim= args.latent_dim,
                                         featureNN_architecture_phase1= args.featureNN_arch_phase1,
-                                        weight_norms_kind_phase1= args.weight_norms_kind_phase1, 
-                                        group_size_phase1= args.group_size_phase1, 
-                                        monotonic_constraint_phase1= args.monotonic_constraint_phase1,
                                         feature_to_concept_mask= feature_to_concept_mask,
                                         #phase2 - final outputs:
                                         num_units_phase2= args.first_hidden_dim_phase2,
@@ -124,9 +121,6 @@ def main():
                                         hidden_layer_phase2 = args.hidden_activate_layer_phase2,          
                                         output_dim = args.output_dim,
                                         featureNN_architecture_phase2 = args.featureNN_arch_phase2,
-                                        weight_norms_kind_phase2 = args.weight_norms_kind_phase2, 
-                                        group_size_phase2 = args.group_size_phase2, 
-                                        monotonic_constraint_phase2 = args.monotonic_constraint_phase2
                                         ).to(device)
     
     total_params = sum(p.numel() for p in hirarch_nam.parameters())

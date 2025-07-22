@@ -184,7 +184,7 @@ class Trainer:
                 if self.model.hierarch_net and not self.model.learn_only_feature_to_concept:
                     l1_penalty_phase2 = l1_penalty(phase2_gams_out, self.l1_lambda_phase2)
                     l2_penalty_phase2 = l2_penalty(phase2_gams_out, self.l2_lambda_phase2)
-                    mono_penalty_phase2 = monotonic_penalty(latent_features, logits, self.monotonicity_lambda_phase2)
+                    mono_penalty_phase2 = monotonic_penalty(latent_features, phase2_gams_out, self.monotonicity_lambda_phase2)
                     loss += l1_penalty_phase2 + l2_penalty_phase2 + mono_penalty_phase2
 
                 # Backward pass and optimization step

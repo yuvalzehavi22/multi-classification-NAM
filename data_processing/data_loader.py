@@ -121,6 +121,85 @@ class SyntheticDatasetGenerator:
     make_loader(X, y, batch_size):
         Creates a DataLoader from given input features and target values.
     """
+    # @staticmethod
+    # def get_synthetic_data_phase1(num_exp=2000, raw_features=5, num_concepts=3, is_test=False, seed=42, X_val=None):
+    #     torch.manual_seed(seed)
+    #     if is_test:
+    #         x_values = torch.linspace(0, 3, num_exp).reshape(-1, 1)
+    #         X = x_values.repeat(1, raw_features)
+    #     elif X_val is not None:
+    #         X = X_val
+    #     else:
+    #         X = Uniform(0, 3).sample((num_exp, raw_features))
+
+    #     shape_functions = {f'f_{j}_{i}': torch.zeros_like(X[:, 0]) for j in range(num_concepts) for i in range(raw_features)}
+    #     out_weights = {}
+
+    #     # Isolated, interpretable concept functions using separate features
+    #     concepts = []
+    #     for j in range(num_concepts):
+    #         feature_idx = j  # Use feature 0, 1, 2 → concept 0, 1, 2
+    #         key = f"f_{j}_{feature_idx}"
+    #         x = X[:, feature_idx]
+
+    #         if j == 0:
+    #             shape = torch.sin(2 * x)
+    #         elif j == 1:
+    #             shape = x ** 2
+    #         elif j == 2:
+    #             shape = torch.exp(0.3 * x)
+    #         else:
+    #             shape = torch.zeros_like(x)
+
+    #         shape_functions[key] = shape
+    #         out_weights[key] = 1.0  # full attribution
+    #         concepts.append(shape.unsqueeze(1))
+
+    #     concepts = torch.cat(concepts, dim=1)
+    #     return X, concepts, shape_functions, out_weights
+
+    # @staticmethod
+    # def get_synthetic_data_phase2(concepts, num_classes=4, is_test=False, device=None):
+    #     if device is None:
+    #         device = concepts.device
+
+    #     if is_test:
+    #         x_values = torch.linspace(round(float(concepts.min())), round(float(concepts.max())), concepts.size(0), device=device).reshape(-1, 1)
+    #         concepts = x_values.repeat(1, concepts.size(1)).to(device)
+
+    #     shape_functions = {f'f_{j}_{i}': torch.zeros_like(concepts[:, 0]) for j in range(num_classes) for i in range(concepts.size(1))}
+    #     outputs = []
+
+    #     for j in range(num_classes):
+    #         c0, c1, c2 = concepts[:, 0], concepts[:, 1], concepts[:, 2]
+
+    #         if j == 0:
+    #             out = 0.7 * c0
+    #         elif j == 1:
+    #             out = 0.5 * c1
+    #         elif j == 2:
+    #             out = 0.6 * c2
+    #         elif j == 3:
+    #             out = 0.4 * torch.tanh(3 * c1) * c1 ** 2
+    #         else:
+    #             out = torch.zeros_like(c0)
+
+    #         outputs.append(out.unsqueeze(1))
+    #         for i in range(concepts.size(1)):
+    #             key = f"f_{j}_{i}"
+    #             if j == 0 and i == 0:
+    #                 shape_functions[key] = 0.7 * c0
+    #             elif j == 1 and i == 1:
+    #                 shape_functions[key] = 0.5 * c1
+    #             elif j == 2 and i == 2:
+    #                 shape_functions[key] = 0.6 * c2
+    #             elif j == 3 and i == 1:
+    #                 shape_functions[key] = 0.4 * torch.tanh(3 * c1) * c1 ** 2
+    #             else:
+    #                 shape_functions[key] = torch.zeros_like(c0)
+
+    #     y = torch.cat(outputs, dim=1)
+    #     return y, shape_functions
     
     @staticmethod
     def get_synthetic_data_phase1(num_exp=10, raw_features=10, num_concepts=4, is_test=False, seed=0, X_val=None):
@@ -268,7 +347,7 @@ class SyntheticDatasetGenerator:
                     shape_functions[key] = class_weights[1] * torch.exp(0.2 * concepts[:, i])  # Exponential
                     #expression += f"{class_weights[1]:.2f} * exp(0.2 * concept[:, {i}]) + "
                 elif (j + i) % 3 == 2:
-                    shape_functions[key] = class_weights[2] * torch.sign(concepts[:, i])*(concepts[:, i] ** 2)  # Quadratic
+                    shape_functions[key] = class_weights[2] * torch.tanh(5.0 * concepts[:, i])*(concepts[:, i] ** 2)  # Quadratic
                     #expression += f"{class_weights[2]:.2f} * (concept[:, {i}] ** 2) + "
                 else:
                     shape_functions[key] = class_weights[3] * (concepts[:, i]**3) #torch.sin(0.5 * concepts[:, i])  # Sinusoidal
